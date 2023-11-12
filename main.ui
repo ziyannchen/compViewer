@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1378</width>
+    <height>701</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1378</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFolder">
+    <property name="title">
+     <string>Folder</string>
+    </property>
+    <addaction name="actionLoadSubFolders"/>
+    <addaction name="actionAdd1Folder"/>
+    <addaction name="actionDel1Folder"/>
+   </widget>
+   <addaction name="menuFolder"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionLoadSubFolders">
+   <property name="text">
+    <string>Load All SubFolders</string>
+   </property>
+  </action>
+  <action name="actionAdd1Folder">
+   <property name="text">
+    <string>+ Add 1Folder</string>
+   </property>
+  </action>
+  <action name="actionDel1Folder">
+   <property name="text">
+    <string>- Del 1Folder</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
