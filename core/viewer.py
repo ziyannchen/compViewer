@@ -23,19 +23,15 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
     def initAll(self):
         self.folderPaths = {}
         self.graphicsViews = {}
-        self.scenes = {}
 
         self.imageFilenames = None
-        self.currentIndex = 0  # 当前显示的图片索引
+        self.currentIndex = -1  # 当前显示的图片索引
 
     def bindEvent(self):
         self.actionLoadSubFolders.triggered.connect(self.loadAllSubFolders)
         self.actionAdd1Folder.triggered.connect(self.addFolder)
-        # self.pushButtonAdd1Folder.clicked.connect(self.loadFolders)
+        self.actionDel1Folder.triggered.connect(lambda: self.deleteFolder())
 
-        self.actionDel1Folder.triggered.connect(lambda: self.deleteFolder(list(self.folderPaths.keys())[-1]))
-        # self.pushButtonDel1Folder.clicked.connect(lambda: self.deleteFolder(list(self.folderPaths.keys())[-1]))
-    
     def checkFolder(self, verbose=False):
         for filename in self.imageFilenames:
             for k, folder in self.folderPaths.items():
@@ -46,18 +42,24 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             self.imageFilenames.remove(filename)
                     
 
-    def deleteFolder(self, base_key):
+    def deleteFolder(self):
+        '''
+        Delete the last one folder by default.
+        TODO: delete the selected folder.
+        '''
+        if len(self.folderPaths) == 0:
+            print('No folder loaded')
+            return
+        base_key = list(self.folderPaths.keys())[-1]
         del self.folderPaths[base_key]
-        # del self.imageFilenames[base_key]
+        self.checkFolder()
+
         # clear the view and scene
         self.graphicsViews[base_key].scene().clear()
         del self.graphicsViews[base_key]
-        del self.scenes[base_key]
-        
-        self.checkFolder()
 
     def loadFolder(self, folder):
-        if folder:
+        if os.path.isdir(folder):
             base_key = os.path.basename(folder)
             if base_key in self.folderPaths.keys():
                 print(f'Folder {folder} already loaded')
@@ -72,6 +74,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
                 self.imageFilenames = tmp_files
             else:
                 self.imageFilenames = list(set((*tmp_files, *self.imageFilenames)))
+            self.currentIndex = 0 if len(self.imageFilenames) > 0 else -1
             print(f'Total {len(self.imageFilenames)} files counted')
             self.update()
 
@@ -82,8 +85,8 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
     def loadAllSubFolders(self):
         self.initAll()
         target = QFileDialog.getExistingDirectory(self, "Select Folder")
-        target = QDir.toNativeSeparators(target)
         # target = '/Users/celine/Downloads/LFW'
+        target = QDir.toNativeSeparators(target)
         # target = '/Users/celine/Downloads/test'
         dirs = os.listdir(target)
         for d in dirs:
@@ -95,7 +98,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
     def scanDir(self, base_key, recursive=False, full_path=False, suffix=('.png', '.jpg', '.jpeg')):
         '''
         Args:
-            recursive: to load images in folder and subfolders recursively. (#TODO)
+            recursive: to load images in folder and subfolders recursively. (TODO)
         '''
         folder = self.folderPaths[base_key]
         if not recursive:
@@ -107,7 +110,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         return filenames
 
     def loadImages(self, path):
-        pixmap = QtGui.QPixmap(path).scaledToWidth(Config['IMG_SIZE'])
+        pixmap = QtGui.QPixmap(path).scaledToWidth(Config['IMG_SIZE_W'])
         return pixmap
 
     def update(self):
@@ -118,7 +121,8 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
 
             # add image
             img_path = os.path.join(self.folderPaths[key], imgname)
-            title_str = key+', '+os.path.basename(img_path)[:-4]
+            dataset = self.folderPaths[key].split(os.sep)[-2]
+            title_str = f'{os.sep}'.join([dataset, key, os.path.basename(img_path)[:-4]])
             if not os.path.exists(img_path):
                 title_str += f'\nDoes not exist :('
             else:
@@ -135,7 +139,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             view.show()
     
     def createGraphicsView(self, base_key):
-        size_w = size_h = Config['WINDOW_SIZE']
+        size_w = Config['WINDOW_SIZE_W']; size_h = Config['WINDOW_SIZE_H']
         border = Config['BORDER']
         x_margin = 10
         y_margin = 30
@@ -147,12 +151,9 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         view.setScene(scene)
         # print('view and scene created')
         self.graphicsViews[base_key] = view
-        self.scenes[base_key] = scene
 
-        # cnt = self.width() // (size + border)
         x_crt = (len(self.graphicsViews.keys()) - 1) % (Config['X_NUM'])
         y_crt = (len(self.graphicsViews.keys()) - 1) // (Config['X_NUM'])
-        # print(x_crt, y_crt)
         x = x_margin + x_crt * (size_w + border)
         y = y_margin + y_crt * (size_h + border)
         view.setGeometry(x, y, size_w, size_h)
@@ -172,6 +173,10 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             image_num = len(self.imageFilenames)
             if self.currentIndex >= image_num:
                 self.currentIndex = image_num - 1
+        # elif k == QtCore.Qt.Key_Plus:
+        #     print(k)
+        # elif k == QtCore.Qt.Key_Minus:
+        #     print(k)
         self.update()
 
     def wheelEvent(self, event):
