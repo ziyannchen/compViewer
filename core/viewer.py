@@ -1,4 +1,5 @@
 import os
+from typing import Dict
 from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsTextItem, QFileDialog
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QDir, QPoint
@@ -12,13 +13,15 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         super(ViewerApp, self).__init__()
         self.folderPaths = {}
         self.imageFilenames = {}
-        self.graphicsViews = {}
+        self.graphicsViews: Dict[str, QGraphicsView] = {}
         self.scenes = {}
         self.currentIndex = 0  # 当前显示的图片索引
         self.mousePressed = False
         self.lastMousePos = QPoint()
         self.setupUi(self)
         self.bindEvent()
+        
+        self.titles = {}
 
     def bindEvent(self):
         self.pushButton_Add.clicked.connect(self.loadFolders)
@@ -75,7 +78,9 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             title = f"{os.path.basename(key)[:10]},{os.path.basename(img_path)}"
             qText = QGraphicsTextItem(title)
             qText.setDefaultTextColor(QtCore.Qt.red)
+            qText.setScale(1.5)
             view.scene().addItem(qText)
+            self.titles[key] = qText
 
             view.show()
     
@@ -120,11 +125,17 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         self.update()
 
     def wheelEvent(self, event):
-        for view in self.graphicsViews.values():
+        for key in self.graphicsViews.keys():
+            view = self.graphicsViews[key]
             factor = 1.1
             if event.angleDelta().y() < 0:
                 factor = 1.0 / factor
             view.scale(factor, factor)
+            title_item = self.titles[key]
+            # 获取视图的左上角在场景中的坐标
+            targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
+            title_item.setPos(targetPos)  # 吸附到目标位置
+            title_item.setScale(title_item.scale() * (1 / factor))
 
     def mousePressEvent(self, event):
         self.mousePressed = True
@@ -140,8 +151,13 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             dy = event.y() - self.lastMousePos.y()
             self.lastMousePos = event.pos()
 
-            # 更新图片位置
-            for view in self.graphicsViews.values():
+            # 更新图片位置 and titles
+            for key in self.graphicsViews.keys():
+                view = self.graphicsViews[key]
                 h, v = view.horizontalScrollBar().value(), view.verticalScrollBar().value()
                 view.horizontalScrollBar().setValue(h - dx)
                 view.verticalScrollBar().setValue(v - dy)
+                title_item = self.titles[key]
+                # 获取视图的左上角在场景中的坐标
+                targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
+                title_item.setPos(targetPos)  # 吸附到目标位置
