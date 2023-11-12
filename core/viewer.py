@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from natsort import natsorted
 from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsTextItem, QFileDialog
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QDir, QPoint
@@ -90,7 +90,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         # target = '/Users/celine/Downloads/LFW'
         target = QDir.toNativeSeparators(target)
         # target = '/Users/celine/Downloads/test'
-        dirs = os.listdir(target)
+        dirs = natsorted(os.listdir(target))
         for d in dirs:
             if d.startswith('.'):
                 continue
@@ -119,9 +119,8 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         imgname = self.imageFilenames[self.currentIndex]
         # print('crt', imgname)
         for key, view in self.graphicsViews.items():
-            view.scene().clear()
-
-            # add image
+            view: QGraphicsView
+            # create new title
             img_path = os.path.join(self.folderPaths[key], imgname)
             dataset = self.folderPaths[key].split(os.sep)[-2]
             # title_str = f'{os.sep}'.join([dataset, key, os.path.basename(img_path)[:-4]])
@@ -129,18 +128,23 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             if not os.path.exists(img_path):
                 title_str += f'\nDoes not exist :('
             else:
-                Qimage = self.loadImages(img_path)
-                view.scene().addPixmap(Qimage)
                 # title_str += f'\n(index: {self.currentIndex})'
                 title_str += f' ({self.currentIndex})'
-
-            # add title
             qText = QGraphicsTextItem(title_str)
             # qText.adjustSize(Config['IMG_SIZE'] // 18)
             qText.setDefaultTextColor(QtCore.Qt.red)
-            qText.setScale(1.5)
-            view.scene().addItem(qText)
+            if key in self.titles:
+                qText.setScale(self.titles[key].scale())
+                qText.setPos(self.titles[key].pos())
+            else:
+                qText.setScale(1.5)
             self.titles[key] = qText
+            view.scene().clear()
+
+            # add image
+            Qimage = self.loadImages(img_path)
+            view.scene().addPixmap(Qimage)
+            view.scene().addItem(qText)
 
             view.show()
     

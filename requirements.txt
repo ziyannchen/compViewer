@@ -1,5 +1,6 @@
 # Pillow
 # imagehash
+natsort
 pyqt5
 # sip==5.0.1
 # PyQt5==5.15.0
