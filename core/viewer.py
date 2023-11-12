@@ -1,11 +1,11 @@
-import os 
+import os
 from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsTextItem, QFileDialog
-# QPushButton, , QGraphicsPixmapItem
-from PyQt5 import QtGui, QtWidgets, QtCore
+from PyQt5 import QtGui, QtCore
+from PyQt5.QtCore import QDir, QPoint
 
 from .ui import Ui_MainWindow
-from .widgets import SyncedGraphicsView, ImageLabel
 from .config import Config
+
 
 class ViewerApp(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -15,8 +15,9 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         self.graphicsViews = {}
         self.scenes = {}
         self.currentIndex = 0  # 当前显示的图片索引
+        self.mousePressed = False
+        self.lastMousePos = QPoint()
         self.setupUi(self)
-
         self.bindEvent()
 
     def bindEvent(self):
@@ -30,11 +31,10 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         self.graphicsViews[base_key].scene().clear()
         del self.graphicsViews[base_key]
         del self.scenes[base_key]
-        # print('delete ', base_key, len(self.folderPaths))
-        # self.update()
 
     def loadFolders(self):
         target = QFileDialog.getExistingDirectory(self, "Select Folder")
+        target = QDir.toNativeSeparators(target)
         # target = '/Users/celine/Downloads/LFW'
         dirs = os.listdir(target)
         for d in dirs:
@@ -72,12 +72,11 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             view.scene().addPixmap(Qimage)
 
             # add title
-            qText = QGraphicsTextItem(key+'/'+os.path.basename(img_path)[:-4]+f'({self.currentIndex})')
-            # qText.adjustSize(Config['IMG_SIZE'] // 18)
+            title = f"{os.path.basename(key)[:10]},{os.path.basename(img_path)}"
+            qText = QGraphicsTextItem(title)
             qText.setDefaultTextColor(QtCore.Qt.red)
             view.scene().addItem(qText)
 
-            # view.fitInView(view.scene().itemsBoundingRect(), Qt.KeepAspectRatio)
             view.show()
     
     def createGraphicsView(self, base_key):
@@ -86,8 +85,9 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         x_margin = 10
         y_margin = 30
         
-        view = SyncedGraphicsView(self)
-        # view = QGraphicsView(self)
+        # view = SyncedGraphicsView(self)
+        view = QGraphicsView(self)
+        view.setDragMode(QGraphicsView.ScrollHandDrag)
         scene = QGraphicsScene(self)
         view.setScene(scene)
         # print('view and scene created')
@@ -118,3 +118,30 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             if self.currentIndex >= image_num:
                 self.currentIndex = image_num - 1
         self.update()
+
+    def wheelEvent(self, event):
+        for view in self.graphicsViews.values():
+            factor = 1.1
+            if event.angleDelta().y() < 0:
+                factor = 1.0 / factor
+            view.scale(factor, factor)
+
+    def mousePressEvent(self, event):
+        self.mousePressed = True
+        self.lastMousePos = event.pos()
+
+    def mouseReleaseEvent(self, event):
+        self.mousePressed = False
+
+    def mouseMoveEvent(self, event) -> None:
+        if self.mousePressed:
+            # 计算鼠标移动距离
+            dx = event.x() - self.lastMousePos.x()
+            dy = event.y() - self.lastMousePos.y()
+            self.lastMousePos = event.pos()
+
+            # 更新图片位置
+            for view in self.graphicsViews.values():
+                h, v = view.horizontalScrollBar().value(), view.verticalScrollBar().value()
+                view.horizontalScrollBar().setValue(h - dx)
+                view.verticalScrollBar().setValue(v - dy)
