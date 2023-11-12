@@ -1,4 +1,5 @@
 import os
+from natsort import natsorted
 from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsTextItem, QFileDialog
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QDir, QPoint
@@ -88,7 +89,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         # target = '/Users/celine/Downloads/LFW'
         target = QDir.toNativeSeparators(target)
         # target = '/Users/celine/Downloads/test'
-        dirs = os.listdir(target)
+        dirs = natsorted(os.listdir(target))
         for d in dirs:
             if d.startswith('.'):
                 continue
