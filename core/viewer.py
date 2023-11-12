@@ -106,11 +106,13 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
     def keyPressEvent(self, event):
         k = event.key()
         # print('pressed', k)
-        if k == QtCore.Qt.Key_Left or k == QtCore.Qt.Key_Up:
+        # if k == QtCore.Qt.Key_Left or k == QtCore.Qt.Key_Up:
+        if k == QtCore.Qt.Key_A or k == QtCore.Qt.Key_W:
             self.currentIndex -= 1
             if self.currentIndex < 0:
                 self.currentIndex = 0
-        elif k == QtCore.Qt.Key_Right or k == QtCore.Qt.Key_Down:
+        # elif k == QtCore.Qt.Key_Right or k == QtCore.Qt.Key_Down:
+        elif k == QtCore.Qt.Key_Space or k == QtCore.Qt.Key_S or k == QtCore.Qt.Key_D:
             self.currentIndex += 1
             image_num = len(self.imageFilenames[list(self.folderPaths.keys())[-1]])
             if self.currentIndex >= image_num:
