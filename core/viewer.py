@@ -26,7 +26,8 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         self.graphicsViews = {}
 
         self.imageFilenames = None
-        self.currentIndex = -1  # 当前显示的图片索引
+        self.currentIndex = 0  # 当前显示的图片索引
+        self.titles = {}
 
     def bindEvent(self):
         self.actionLoadSubFolders.triggered.connect(self.loadAllSubFolders)
@@ -118,24 +119,31 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         imgname = self.imageFilenames[self.currentIndex]
         # print('crt', imgname)
         for key, view in self.graphicsViews.items():
-            view.scene().clear()
-
-            # add image
+            view: QGraphicsView
+            # create new title
             img_path = os.path.join(self.folderPaths[key], imgname)
             dataset = self.folderPaths[key].split(os.sep)[-2]
-            title_str = f'{os.sep}'.join([dataset, key, os.path.basename(img_path)[:-4]])
+            # title_str = f'{os.sep}'.join([dataset, key, os.path.basename(img_path)[:-4]])
+            title_str = f'\n'.join([dataset, key[:10], os.path.basename(img_path)[:-4]])
             if not os.path.exists(img_path):
                 title_str += f'\nDoes not exist :('
             else:
-                Qimage = self.loadImages(img_path)
-                view.scene().addPixmap(Qimage)
-                title_str += f'\n(index: {self.currentIndex})'
-
-            # add title
+                # title_str += f'\n(index: {self.currentIndex})'
+                title_str += f' ({self.currentIndex})'
             qText = QGraphicsTextItem(title_str)
             qText.setTextSize(Config['IMG_SIZE_W'] // 18)
             qText.setDefaultTextColor(QtCore.Qt.red)
-            qText.setScale(1.2)
+            if key in self.titles:
+                qText.setScale(self.titles[key].scale())
+                qText.setPos(self.titles[key].pos())
+            else:
+                qText.setScale(1.5)
+            self.titles[key] = qText
+            view.scene().clear()
+
+            # add image
+            Qimage = self.loadImages(img_path)
+            view.scene().addPixmap(Qimage)
             view.scene().addItem(qText)
 
             view.show()
@@ -182,11 +190,17 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         self.update()
 
     def wheelEvent(self, event):
-        for view in self.graphicsViews.values():
+        for key in self.graphicsViews.keys():
+            view = self.graphicsViews[key]
             factor = 1.1
             if event.angleDelta().y() < 0:
                 factor = 1.0 / factor
             view.scale(factor, factor)
+            title_item = self.titles[key]
+            # 获取视图的左上角在场景中的坐标
+            targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
+            title_item.setPos(targetPos)  # 吸附到目标位置
+            title_item.setScale(title_item.scale() * (1 / factor))
 
     def mousePressEvent(self, event):
         self.mousePressed = True
@@ -202,8 +216,13 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             dy = event.y() - self.lastMousePos.y()
             self.lastMousePos = event.pos()
 
-            # 更新图片位置
-            for view in self.graphicsViews.values():
+            # 更新图片位置 and titles
+            for key in self.graphicsViews.keys():
+                view = self.graphicsViews[key]
                 h, v = view.horizontalScrollBar().value(), view.verticalScrollBar().value()
                 view.horizontalScrollBar().setValue(h - dx)
                 view.verticalScrollBar().setValue(v - dy)
+                title_item = self.titles[key]
+                # 获取视图的左上角在场景中的坐标
+                targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
+                title_item.setPos(targetPos)  # 吸附到目标位置
