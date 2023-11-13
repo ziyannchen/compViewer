@@ -85,8 +85,8 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
 
     def loadAllSubFolders(self):
         self.initAll()
-        target = QFileDialog.getExistingDirectory(self, "Select Folder")
-        # target = '/Users/celine/Downloads/LFW'
+        # target = QFileDialog.getExistingDirectory(self, "Select Folder")
+        target = '/Users/celine/Downloads/LFW'
         target = QDir.toNativeSeparators(target)
         # target = '/Users/celine/Downloads/test'
         dirs = natsorted(os.listdir(target))
@@ -133,8 +133,9 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
 
             # add title
             qText = QGraphicsTextItem(title_str)
-            # qText.adjustSize(Config['IMG_SIZE'] // 18)
+            qText.setTextSize(Config['IMG_SIZE_W'] // 18)
             qText.setDefaultTextColor(QtCore.Qt.red)
+            qText.setScale(1.2)
             view.scene().addItem(qText)
 
             view.show()

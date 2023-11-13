@@ -8,7 +8,7 @@ Config = {
     'WINDOW_SIZE_W': 280,
     'WINDOW_SIZE_H': 280,
     # 每个图片的大小
-    'IMG_SIZE_W': 280,
-    'IMG_SIZE_H': 280,
+    'IMG_SIZE_W': 512,
+    'IMG_SIZE_H': 512,
 }
         
