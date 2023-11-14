@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>Base</class>
+ <widget class="QMainWindow" name="Base">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -23,20 +23,38 @@
      <height>24</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuFolder">
+   <widget class="QMenu" name="menuFile">
     <property name="title">
-     <string>Folder</string>
+     <string>File</string>
     </property>
     <addaction name="actionLoadSubFolders"/>
     <addaction name="actionAdd1Folder"/>
     <addaction name="actionDel1Folder"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave"/>
+    <addaction name="separator"/>
    </widget>
-   <addaction name="menuFolder"/>
+   <widget class="QMenu" name="menuSeetings">
+    <property name="title">
+     <string>Seetings</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuAction">
+    <property name="title">
+     <string>Action</string>
+    </property>
+    <addaction name="actionGoTo"/>
+    <addaction name="actionGoToName"/>
+    <addaction name="separator"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuAction"/>
+   <addaction name="menuSeetings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoadSubFolders">
    <property name="text">
-    <string>Load All SubFolders</string>
+    <string>Load all...</string>
    </property>
   </action>
   <action name="actionAdd1Folder">
@@ -47,6 +65,21 @@
   <action name="actionDel1Folder">
    <property name="text">
     <string>- Del 1Folder</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="text">
+    <string>Save...</string>
+   </property>
+  </action>
+  <action name="actionGoTo">
+   <property name="text">
+    <string>GoTo Index</string>
+   </property>
+  </action>
+  <action name="actionGoToName">
+   <property name="text">
+    <string>GoTo Name</string>
    </property>
   </action>
  </widget>

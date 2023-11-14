@@ -1,5 +1,5 @@
 
-Config = {
+WindowConfig = {
     # 一行显示多少个图片
     'X_NUM': 5,
     # 每个图片窗口之间的间隔距离

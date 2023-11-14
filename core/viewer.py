@@ -1,15 +1,18 @@
 import os
 from natsort import natsorted
-from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsTextItem, QFileDialog
+from PyQt5.QtWidgets import (QMainWindow, QGraphicsView, QGraphicsScene, 
+                             QGraphicsTextItem, QFileDialog, QDialog, QMessageBox)
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import QDir, QPoint
 
-from ui.main import Ui_MainWindow
-from .widgets import SyncedGraphicsView, ImageLabel
-from .config import Config
+from ui import MainWindowUI
+from utils.file import copyFile, fuzzySearchList
+from config.window import WindowConfig
+from .dialogs import Dialog
+# from .widgets import SyncedGraphicsView, ImageLabel
 
 
-class ViewerApp(QMainWindow, Ui_MainWindow):
+class ViewerApp(QMainWindow, MainWindowUI):
     def __init__(self):
         super(ViewerApp, self).__init__()
         self.initAll()
@@ -26,13 +29,18 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         self.graphicsViews = {}
 
         self.imageFilenames = None
-        self.currentIndex = 0  # 当前显示的图片索引
+        self.currentIndex = -1  # 当前显示的图片索引
         self.titles = {}
 
     def bindEvent(self):
+        # file
         self.actionLoadSubFolders.triggered.connect(self.loadAllSubFolders)
         self.actionAdd1Folder.triggered.connect(self.addFolder)
         self.actionDel1Folder.triggered.connect(lambda: self.deleteFolder())
+
+        self.actionGoTo.triggered.connect(self.actionGoToTriggered)
+        self.actionGoToName.triggered.connect(lambda: self.actionGoToTriggered(by_name=True))
+        self.actionSave.triggered.connect(self.actionSaveTriggered)
 
     def checkFolder(self, verbose=False):
         for filename in self.imageFilenames:
@@ -43,7 +51,6 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
                     continue
             self.imageFilenames.remove(filename)
                     
-
     def deleteFolder(self):
         '''
         Delete the last one folder by default.
@@ -77,6 +84,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             else:
                 self.imageFilenames = list(set((*tmp_files, *self.imageFilenames)))
             self.currentIndex = 0 if len(self.imageFilenames) > 0 else -1
+            self.imageFilenames = natsorted(self.imageFilenames)
             print(f'Total {len(self.imageFilenames)} files counted')
             self.update()
 
@@ -112,7 +120,7 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         return filenames
 
     def loadImages(self, path):
-        pixmap = QtGui.QPixmap(path).scaledToWidth(Config['IMG_SIZE_W'])
+        pixmap = QtGui.QPixmap(path).scaledToWidth(WindowConfig['IMG_SIZE_W'])
         return pixmap
 
     def update(self):
@@ -124,14 +132,13 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             img_path = os.path.join(self.folderPaths[key], imgname)
             dataset = self.folderPaths[key].split(os.sep)[-2]
             # title_str = f'{os.sep}'.join([dataset, key, os.path.basename(img_path)[:-4]])
-            title_str = f'\n'.join([dataset, key[:10], os.path.basename(img_path)[:-4]])
+            title_str = f'\n'.join([dataset, key, os.path.basename(img_path)[:-4]])
             if not os.path.exists(img_path):
                 title_str += f'\nDoes not exist :('
             else:
                 # title_str += f'\n(index: {self.currentIndex})'
                 title_str += f' ({self.currentIndex})'
             qText = QGraphicsTextItem(title_str)
-            qText.setTextSize(Config['IMG_SIZE_W'] // 18)
             qText.setDefaultTextColor(QtCore.Qt.red)
             if key in self.titles:
                 qText.setScale(self.titles[key].scale())
@@ -149,10 +156,9 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
             view.show()
     
     def createGraphicsView(self, base_key):
-        size_w = Config['WINDOW_SIZE_W']; size_h = Config['WINDOW_SIZE_H']
-        border = Config['BORDER']
-        x_margin = 10
-        y_margin = 30
+        size_w = WindowConfig['WINDOW_SIZE_W']; size_h = WindowConfig['WINDOW_SIZE_H']
+        border = WindowConfig['BORDER']
+        x_margin = y_margin = 10
         
         # view = SyncedGraphicsView(self)
         view = QGraphicsView(self)
@@ -162,8 +168,8 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
         # print('view and scene created')
         self.graphicsViews[base_key] = view
 
-        x_crt = (len(self.graphicsViews.keys()) - 1) % (Config['X_NUM'])
-        y_crt = (len(self.graphicsViews.keys()) - 1) // (Config['X_NUM'])
+        x_crt = (len(self.graphicsViews.keys()) - 1) % (WindowConfig['X_NUM'])
+        y_crt = (len(self.graphicsViews.keys()) - 1) // (WindowConfig['X_NUM'])
         x = x_margin + x_crt * (size_w + border)
         y = y_margin + y_crt * (size_h + border)
         view.setGeometry(x, y, size_w, size_h)
@@ -226,3 +232,47 @@ class ViewerApp(QMainWindow, Ui_MainWindow):
                 # 获取视图的左上角在场景中的坐标
                 targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
                 title_item.setPos(targetPos)  # 吸附到目标位置
+
+    def dataLoadedCheck(self):
+        if self.imageFilenames is None: # equals to self.currentIndex == -1
+            print('No data loaded')
+            return False
+        return True
+    
+    def actionSaveTriggered(self):
+        if self.currentIndex == -1:
+            print('No data to save!')
+            return 
+        save_folder = QFileDialog.getExistingDirectory(self, "Select Folder")
+        print('save_folder', save_folder)
+        if save_folder:
+            self.save_dir = save_folder
+            save_folder = QDir.toNativeSeparators(save_folder)
+            self.saveImageGroup(save_folder)
+
+    def saveImageGroup(self, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+        imgname, ext = os.path.splitext(self.imageFilenames[self.currentIndex])
+
+        info_str = {
+            'title':'Info', 
+            'text': 'All imgaes are saved susccessfully'}
+        for key in self.graphicsViews.keys():
+            img_path = os.path.join(self.folderPaths[key], imgname+ext)
+            target_path = os.path.join(save_dir, f'{self.currentIndex}_{imgname}', f'{key}{ext}')
+            if not copyFile(target_path, img_path):
+                print(f'Copy {img_path} failed')
+                info_str['title'] = 'Error'
+                info_str['text'] = f'Copy {img_path} failed\n'
+        QMessageBox.information(self, info_str['title'], info_str['text'])
+
+    def actionGoToTriggered(self, by_name=False):
+        text = 'Name' if by_name else 'Index'
+        dialog = Dialog(title='GoTo', text=text)
+        result = dialog.exec_()
+        if result == QDialog.Accepted:
+            input_text = dialog.get_input_text()
+            print("Input Text:", input_text)
+            index = fuzzySearchList(input_text, self.imageFilenames) if by_name else int(input_text)
+            self.currentIndex = index
+            self.update()

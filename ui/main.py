@@ -1,8 +1,8 @@
-from .base_ui import BaseUI
+from .base import Ui_Base
 
-class Ui_MainWindow(BaseUI):
+class MainWindowUI(Ui_Base):
     def __init__(self):
-        super(Ui_MainWindow, self).__init__()
+        super(MainWindowUI, self).__init__()
     
     def setWindow(self, MainWindow):
         self.MainWindow = MainWindow
