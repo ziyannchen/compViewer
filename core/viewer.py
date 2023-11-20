@@ -1,199 +1,143 @@
 import os
-from natsort import natsorted
-from PyQt5.QtWidgets import (QMainWindow, QGraphicsView, QGraphicsScene, 
-                             QGraphicsTextItem, QFileDialog, QDialog, QMessageBox)
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import QDir, QPoint
+import math
+from PyQt5.QtWidgets import (QMainWindow, QDialog, QMessageBox, QDesktopWidget)
+from PyQt5.QtCore import QPoint
 
 from ui import MainWindowUI
-from utils.file import copyFile, fuzzySearchList
-from config.window import WindowConfig
+from utils.file import fuzzySearchList
+from utils.check import checkOverflow
+from config import SSH_CONFIG, windowConfig
 from .dialogs import Dialog
-# from .widgets import SyncedGraphicsView, ImageLabel
-
+from .media import QmediaObjHandler
+from .files import fileHandler
+from .remote import SSHConnection
+from .events import EventHandler
 
 class ViewerApp(QMainWindow, MainWindowUI):
     def __init__(self):
         super(ViewerApp, self).__init__()
-        self.initAll()
+        # for debug
+        import cProfile
+        self.profiler = cProfile.Profile()
+
+        # files
+        self.file_handler = fileHandler(self)
+        self.media_handler = QmediaObjHandler()
+        # defind func to fit remote or local features
+        self.ssh_connector = None
 
         # UI window
+        self.view_adjusted = False
         self.setWindow(self)
         self.mousePressed = False
         self.lastMousePos = QPoint()
         self.setupUi(self)
         self.bindEvent()
-    
-    def initAll(self):
-        self.folderPaths = {}
-        self.graphicsViews = {}
 
-        self.imageFilenames = None
-        self.currentIndex = -1  # 当前显示的图片索引
-        self.titles = {}
+    def set_ssh_connector(self, client):
+        self.ssh_connector = client
+        setattr(self.media_handler, 'load_func', dict(img=client.get_remote_file_content, vide=client.get_remote_file_content))
+        setattr(self.media_handler, 'check_path_func', any) # TODO: path in remote not checked now
+
+    @property
+    def imageFilenames(self):
+        return self.file_handler.imageFilenames
+    
+    @property
+    def folderPaths(self):
+        return self.file_handler.folderPaths
+    
+    @property
+    def graphicsViews(self):
+        return self.file_handler.graphicsViews
+    
+    @property
+    def currentIndex(self):
+        return self.file_handler.currentIndex
+    
+    @currentIndex.setter
+    def currentIndex(self, value):
+        '''currentIndex.setter func
+        When self.currentIndex is set (arbitrary 'self.currentIndex=' clause), 
+            this func will be called automatically with param value as the set value.
+        This feature is based on self.currentIndex is decorated as a property key.
+        '''
+        setattr(self.file_handler, 'currentIndex', value)
+        max_image_idx = len(self.imageFilenames) - 1
+        if self.currentIndex < 0:
+            QMessageBox.information(self, 'Info', 'The beginning of the images! Skip to the tail...')
+            setattr(self.file_handler, 'currentIndex', max_image_idx)
+        elif self.currentIndex > max_image_idx:
+            QMessageBox.information(self, 'Info', 'The end of the images! Skip to the start...')
+            setattr(self.file_handler, 'currentIndex', 0)
+    
+    @property
+    def titles(self):
+        return self.file_handler.titles
 
     def bindEvent(self):
         # file
-        self.actionLoadSubFolders.triggered.connect(self.loadAllSubFolders)
-        self.actionAdd1Folder.triggered.connect(self.addFolder)
-        self.actionDel1Folder.triggered.connect(lambda: self.deleteFolder())
+        self.actionLoadSubFolders.triggered.connect(self.file_handler.loadAllSubFolders)
+        self.actionAdd1Folder.triggered.connect(self.file_handler.addFolder)
+        self.actionDel1Folder.triggered.connect(lambda: self.file_handler.deleteFolder())
+        self.actionSave.triggered.connect(self.file_handler.actionSaveTriggered)
+        self.actionOpenRemote.triggered.connect(lambda: self.connectRemote('PAI-aliyun-A100'))
 
         self.actionGoTo.triggered.connect(self.actionGoToTriggered)
         self.actionGoToName.triggered.connect(lambda: self.actionGoToTriggered(by_name=True))
-        self.actionSave.triggered.connect(self.actionSaveTriggered)
-
-    def checkFolder(self, verbose=False):
-        for filename in self.imageFilenames:
-            for k, folder in self.folderPaths.items():
-                if not os.path.exists(os.path.join(folder, filename)):
-                    if verbose:
-                        print(f'File {filename} does not exist in folder {folder}')
-                    continue
-            self.imageFilenames.remove(filename)
-                    
-    def deleteFolder(self):
-        '''
-        Delete the last one folder by default.
-        TODO: delete the selected folder.
-        '''
-        if len(self.folderPaths) == 0:
-            print('No folder loaded')
-            return
-        base_key = list(self.folderPaths.keys())[-1]
-        del self.folderPaths[base_key]
-        self.checkFolder()
-
-        # clear the view and scene
-        self.graphicsViews[base_key].scene().clear()
-        del self.graphicsViews[base_key]
-
-    def loadFolder(self, folder):
-        if os.path.isdir(folder):
-            base_key = os.path.basename(folder)
-            if base_key in self.folderPaths.keys():
-                print(f'Folder {folder} already loaded')
-                return
-            self.folderPaths[base_key] = folder
-            self.createGraphicsView(base_key)
-            tmp_files = self.scanDir(base_key, full_path=False)
-            print(f'Folder {folder}, {len(tmp_files)} files found')
-
-            # in case of different file length in folders, collect all file names
-            if self.imageFilenames is None:
-                self.imageFilenames = tmp_files
-            else:
-                self.imageFilenames = list(set((*tmp_files, *self.imageFilenames)))
-            self.currentIndex = 0 if len(self.imageFilenames) > 0 else -1
-            self.imageFilenames = natsorted(self.imageFilenames)
-            print(f'Total {len(self.imageFilenames)} files counted')
-            self.update()
-
-    def addFolder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Folder")
-        self.loadFolder(folder)
-
-    def loadAllSubFolders(self):
-        self.initAll()
-        # target = QFileDialog.getExistingDirectory(self, "Select Folder")
-        target = '/Users/celine/Downloads/LFW'
-        target = QDir.toNativeSeparators(target)
-        # target = '/Users/celine/Downloads/test'
-        dirs = natsorted(os.listdir(target))
-        for d in dirs:
-            if d.startswith('.'):
-                continue
-            folder = os.path.join(target, d)
-            self.loadFolder(folder)
-    
-    def scanDir(self, base_key, recursive=False, full_path=False, suffix=('.png', '.jpg', '.jpeg')):
-        '''
-        Args:
-            recursive: to load images in folder and subfolders recursively. (TODO)
-        '''
-        folder = self.folderPaths[base_key]
-        if not recursive:
-            filenames = [f for f in os.listdir(folder) if f.endswith(suffix)]
-        if full_path:
-            filenames = [os.path.join(folder, f) for f in filenames]
-        filenames.sort()
-
-        return filenames
-
-    def loadImages(self, path):
-        pixmap = QtGui.QPixmap(path).scaledToWidth(WindowConfig['IMG_SIZE_W'])
-        return pixmap
 
     def update(self):
-        imgname = self.imageFilenames[self.currentIndex]
-        # print('crt', imgname)
-        for key, view in self.graphicsViews.items():
-            view: QGraphicsView
-            # create new title
-            img_path = os.path.join(self.folderPaths[key], imgname)
-            dataset = self.folderPaths[key].split(os.sep)[-2]
-            # title_str = f'{os.sep}'.join([dataset, key, os.path.basename(img_path)[:-4]])
-            title_str = f'\n'.join([dataset, key, os.path.basename(img_path)[:-4]])
-            if not os.path.exists(img_path):
-                title_str += f'\nDoes not exist :('
-            else:
-                # title_str += f'\n(index: {self.currentIndex})'
-                title_str += f' ({self.currentIndex})'
-            qText = QGraphicsTextItem(title_str)
-            qText.setDefaultTextColor(QtCore.Qt.red)
-            if key in self.titles:
-                qText.setScale(self.titles[key].scale())
-                qText.setPos(self.titles[key].pos())
-            else:
-                qText.setScale(1.5)
-            self.titles[key] = qText
-            view.scene().clear()
+        self.profiler.enable()
+        # load_func = load_image if load_func is None else load_func
+        filename = self.imageFilenames[self.currentIndex]
+        for idx, (key, view) in enumerate(self.graphicsViews.items()):
+            file_path = os.path.join(self.folderPaths[key], filename)
+            qText = self.media_handler.get_title(self, file_path, key)
 
-            # add image
-            Qimage = self.loadImages(img_path)
-            view.scene().addPixmap(Qimage)
+            # add media obj
+            view.scene().clear() # scene clearing after qText created, avoid qText to be cleared
+            self.media_handler.request(view, file_path)
+            if not self.view_adjusted:
+                self.adjustGraphicsView(idx, view, self.media_handler.width, self.media_handler.height)
             view.scene().addItem(qText)
-
             view.show()
-    
-    def createGraphicsView(self, base_key):
-        size_w = WindowConfig['WINDOW_SIZE_W']; size_h = WindowConfig['WINDOW_SIZE_H']
-        border = WindowConfig['BORDER']
-        x_margin = y_margin = 10
-        
-        # view = SyncedGraphicsView(self)
-        view = QGraphicsView(self)
-        view.setDragMode(QGraphicsView.ScrollHandDrag)
-        scene = QGraphicsScene(self)
-        view.setScene(scene)
-        # print('view and scene created')
-        self.graphicsViews[base_key] = view
 
-        x_crt = (len(self.graphicsViews.keys()) - 1) % (WindowConfig['X_NUM'])
-        y_crt = (len(self.graphicsViews.keys()) - 1) // (WindowConfig['X_NUM'])
+        self.view_adjusted = True
+        self.profiler.disable()
+        # self.profiler.print_stats()
+
+    def adjustGraphicsView(self, idx, view, media_w, media_h):
+        border = windowConfig.BORDER
+        x_margin, y_margin = windowConfig.MARGIN_W, windowConfig.MARGIN_H
+
+        print(media_w + 2 * border, self.size().width())
+        # total_len = len(self.folderPaths.keys())
+        x_num = windowConfig.X_NUM
+
+        size_w, size_h = windowConfig.WINDOW_SIZE_W, windowConfig.WINDOW_SIZE_H
+        if size_w == 'auto':
+            # 获取主屏幕
+            # screen = QDesktopWidget().screenGeometry()
+            # screen_w, screen_h = screen.width(), screen.height()
+            screen_w, screen_h = self.size().width(), self.size().height()
+            size_w = (screen_w - 2 * x_margin - border * (x_num - 1)) // x_num
+            size_h = (media_h / media_w) * size_w
+            y_num = math.ceil(len(self.folderPaths.keys()) / x_num)
+            if y_num * size_h + border > screen_h:
+                size_h = (screen_h - 2 * y_margin - border * (y_num - 1)) // y_num
+                size_w = (media_w / media_h) * size_h
+            windowConfig.WINDOW_SIZE_W, windowConfig.WINDOW_SIZE_H = size_w, size_h
+        # print(size_w, size_h)
+        
+        x_crt = idx % (x_num)
+        y_crt = idx // (x_num)
         x = x_margin + x_crt * (size_w + border)
         y = y_margin + y_crt * (size_h + border)
         view.setGeometry(x, y, size_w, size_h)
-        # print(x, y, size_w, size_h, self.graphicsViews.keys())
-    
+        # print('view pos', x, y, size_w, size_h)
+
     def keyPressEvent(self, event):
-        k = event.key()
-        # print('pressed', k)
-        # if k == QtCore.Qt.Key_Left or k == QtCore.Qt.Key_Up:
-        if k == QtCore.Qt.Key_A or k == QtCore.Qt.Key_W:
-            self.currentIndex -= 1
-            if self.currentIndex < 0:
-                self.currentIndex = 0
-        # elif k == QtCore.Qt.Key_Right or k == QtCore.Qt.Key_Down:
-        elif k == QtCore.Qt.Key_Space or k == QtCore.Qt.Key_S or k == QtCore.Qt.Key_D:
-            self.currentIndex += 1
-            image_num = len(self.imageFilenames)
-            if self.currentIndex >= image_num:
-                self.currentIndex = image_num - 1
-        # elif k == QtCore.Qt.Key_Plus:
-        #     print(k)
-        # elif k == QtCore.Qt.Key_Minus:
-        #     print(k)
-        self.update()
+        EventHandler.keyPressedEvent(self, event)
 
     def wheelEvent(self, event):
         for key in self.graphicsViews.keys():
@@ -216,6 +160,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
         self.mousePressed = False
 
     def mouseMoveEvent(self, event) -> None:
+        print('move', self.mousePressed)
         if self.mousePressed:
             # 计算鼠标移动距离
             dx = event.x() - self.lastMousePos.x()
@@ -226,45 +171,21 @@ class ViewerApp(QMainWindow, MainWindowUI):
             for key in self.graphicsViews.keys():
                 view = self.graphicsViews[key]
                 h, v = view.horizontalScrollBar().value(), view.verticalScrollBar().value()
+                if not checkOverflow(h - dx, 'int32') or not checkOverflow(v - dy, 'int32'):
+                    print(f'Int32 overflow... could not scale to {h - dx}, {v - dy}')
+                    return
                 view.horizontalScrollBar().setValue(h - dx)
                 view.verticalScrollBar().setValue(v - dy)
                 title_item = self.titles[key]
                 # 获取视图的左上角在场景中的坐标
                 targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
                 title_item.setPos(targetPos)  # 吸附到目标位置
-
-    def dataLoadedCheck(self):
-        if self.imageFilenames is None: # equals to self.currentIndex == -1
-            print('No data loaded')
-            return False
-        return True
     
-    def actionSaveTriggered(self):
-        if self.currentIndex == -1:
-            print('No data to save!')
-            return 
-        save_folder = QFileDialog.getExistingDirectory(self, "Select Folder")
-        print('save_folder', save_folder)
-        if save_folder:
-            self.save_dir = save_folder
-            save_folder = QDir.toNativeSeparators(save_folder)
-            self.saveImageGroup(save_folder)
-
-    def saveImageGroup(self, save_dir):
-        os.makedirs(save_dir, exist_ok=True)
-        imgname, ext = os.path.splitext(self.imageFilenames[self.currentIndex])
-
-        info_str = {
-            'title':'Info', 
-            'text': 'All imgaes are saved susccessfully'}
-        for key in self.graphicsViews.keys():
-            img_path = os.path.join(self.folderPaths[key], imgname+ext)
-            target_path = os.path.join(save_dir, f'{self.currentIndex}_{imgname}', f'{key}{ext}')
-            if not copyFile(target_path, img_path):
-                print(f'Copy {img_path} failed')
-                info_str['title'] = 'Error'
-                info_str['text'] = f'Copy {img_path} failed\n'
-        QMessageBox.information(self, info_str['title'], info_str['text'])
+    def resizeEvent(self, event):
+        # 调用基类的 resizeEvent 方法
+        super(ViewerApp, self).resizeEvent(event)
+        windowConfig.WINDOW_SIZE_W = 'auto'
+        self.view_adjusted = False
 
     def actionGoToTriggered(self, by_name=False):
         text = 'Name' if by_name else 'Index'
@@ -274,5 +195,34 @@ class ViewerApp(QMainWindow, MainWindowUI):
             input_text = dialog.get_input_text()
             print("Input Text:", input_text)
             index = fuzzySearchList(input_text, self.imageFilenames) if by_name else int(input_text)
+            if index > len(self.imageFilenames) - 1 or index < 0:
+                QMessageBox.Critical(f'Invalid Index {index}!')
+                return 
             self.currentIndex = index
             self.update()
+
+    def connectRemote(self, cfg_name):
+        cfg = SSH_CONFIG[cfg_name]
+        # try:
+        client = SSHConnection(
+            host = cfg['HostName'],
+            user = cfg['User'],
+            port = cfg['Port'],
+            private_key_path=os.path.expanduser(cfg['PrivateKeyPath']))
+        self.set_ssh_connector(client)
+        # dialog = Dialog(title=f'Remote '+cfg['HostName'], text='paths(split by ;)')
+        # result = dialog.exec_()
+        # if result == QDialog.Accepted:
+            # self.file_handler.initAll()
+            # input_text = dialog.get_input_text()
+            # path_list = input_text.split(';')
+            # print(path_list)
+        path_list = '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/5000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/10000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/20000'.split(';')
+        for path in path_list:
+            # print(self.ssh_connector.getAllFiles(path))
+            self.file_handler.loadFolder(
+                path, 
+                check_dir=any, # path not need to be checked for files are from ls clause
+                scan_func=self.ssh_connector.getAllFiles)
+        self.update()
+        

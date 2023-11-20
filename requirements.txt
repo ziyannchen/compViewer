@@ -4,3 +4,10 @@ natsort
 pyqt5
 # sip==5.0.1
 # PyQt5==5.15.0
+
+# for ssh
+pyyaml
+paramiko
+
+# for video
+cv2

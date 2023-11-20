@@ -1,0 +1,15 @@
+# 常量
+BORDER: 10 # 定义每个图片窗口之间的间隔距离
+MARGIN_H: 10 # 定义画面上下的margin
+MARGIN_W: 10
+
+# 一行显示多少个图片
+X_NUM: 1
+
+# 每个图片窗口大小 auto: 自动计算window长宽，根据app的窗体大小调整
+WINDOW_SIZE_W: auto
+WINDOW_SIZE_H: auto
+
+# 每个图片的大小 h=auto: 根据长宽比例自动计算
+IMG_SIZE_W: 512
+IMG_SIZE_H: auto

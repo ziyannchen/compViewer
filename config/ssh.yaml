@@ -1,5 +1,6 @@
-
-Host: PAI-aliyun-A100-4cds
+# recommend to use ssh-key and to avoid password input in the app
+PAI-aliyun-A100:
   HostName: 8.130.120.199
   Port: 30030
   User: chenziyan
+  PrivateKeyPath: ~/.ssh/id_rsa

@@ -33,11 +33,13 @@
     <addaction name="separator"/>
     <addaction name="actionSave"/>
     <addaction name="separator"/>
+    <addaction name="actionOpenRemote"/>
    </widget>
-   <widget class="QMenu" name="menuSeetings">
+   <widget class="QMenu" name="menuSettings">
     <property name="title">
-     <string>Seetings</string>
+     <string>Settings</string>
     </property>
+    <addaction name="actionConfigRemote"/>
    </widget>
    <widget class="QMenu" name="menuAction">
     <property name="title">
@@ -49,7 +51,7 @@
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuAction"/>
-   <addaction name="menuSeetings"/>
+   <addaction name="menuSettings"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoadSubFolders">
@@ -80,6 +82,16 @@
   <action name="actionGoToName">
    <property name="text">
     <string>GoTo Name</string>
+   </property>
+  </action>
+  <action name="actionOpenRemote">
+   <property name="text">
+    <string>Open remote</string>
+   </property>
+  </action>
+  <action name="actionConfigRemote">
+   <property name="text">
+    <string>Config remote</string>
    </property>
   </action>
  </widget>
