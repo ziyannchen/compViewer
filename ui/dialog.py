@@ -12,28 +12,51 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 class Ui_Dialog(object):
-    def setupUi(self, Dialog, title='Dialog', text='input'):
-        Dialog.setObjectName("Dialog")
-        Dialog.resize(327, 112)
+    def setupUi(self, Dialog, title='Dialog', label='input', edit='line'):
+        margin = 30
+        border = 10
+        button_height = 30
+        edit_w = 123
+
+        Dialog.setObjectName("Dialog") 
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
-        self.buttonBox.setGeometry(QtCore.QRect(30, 60, 271, 32))
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName("buttonBox")
-        self.lineEdit = QtWidgets.QLineEdit(Dialog)
-        str_len = len(text) * (len('input') // 60)
-        self.lineEdit.setGeometry(QtCore.QRect(30+str_len, 30, 113, 21))
-        self.lineEdit.setObjectName("lineEdit")
-        self.label = QtWidgets.QLabel(Dialog)
-        self.label.setGeometry(QtCore.QRect(30, 30, 60, 16))
-        self.label.setObjectName("label")
 
-        self.retranslateUi(Dialog, text, title)
+        self.label = QtWidgets.QLabel(Dialog)
+        self.label.setObjectName("label")
+        self.retranslateUi(Dialog, label, title)
+
+        # label_str_len = len(label) * (30 // len('input'))
+        label_str_len = QtGui.QFontMetrics(self.label.font()).width(label) + border
+        print(len(label), label_str_len)
+        if edit == 'line':
+            # line Edit
+            edit_h = 21
+            self.editor = QtWidgets.QLineEdit(Dialog)
+            self.editor.setGeometry(QtCore.QRect(margin+label_str_len, margin, edit_w, edit_h))
+            self.editor.setObjectName("lineEdit")
+        elif edit == 'text':
+            # text Edit
+            edit_h = 100
+            self.editor = QtWidgets.QTextEdit(Dialog)
+            self.editor.setGeometry(QtCore.QRect(margin+label_str_len, margin, edit_w, edit_h))
+            self.editor.setPlaceholderText("Enter your text here...")
+        else:
+            raise NotImplementedError(f'edit type {edit} not implemented')
+        
+        space = 2*margin + border
+        Dialog.resize(space+edit_w+label_str_len, space+button_height+edit_h)
+        self.label.setGeometry(QtCore.QRect(margin, margin, label_str_len, 16))
+        self.buttonBox.setGeometry(
+            QtCore.QRect(margin, margin+edit_h+border, edit_w+label_str_len+border, 32))
+
         self.buttonBox.accepted.connect(Dialog.accept) # type: ignore
         self.buttonBox.rejected.connect(Dialog.reject) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
-    def retranslateUi(self, Dialog, text, title):
+    def retranslateUi(self, Dialog, label, title):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", title))
-        self.label.setText(_translate("Dialog", text))
+        self.label.setText(_translate("Dialog", label))

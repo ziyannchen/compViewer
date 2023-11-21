@@ -1,11 +1,15 @@
+import os
+
 from utils.file import yaml_load
 
-SSH_CONFIG = yaml_load('config/ssh.yaml')
-WINDOW_CONFIG = yaml_load('config/window.yaml')
-
-class WindowConfig:
-    def __init__(self) -> None:
-        for key, value in WINDOW_CONFIG.items():
+class Config:
+    def __init__(self, cfg_path) -> None:
+        config = yaml_load(cfg_path)
+        for key, value in config.items():
             setattr(self, key, value)
-    
-windowConfig = WindowConfig()
+
+sshConfig = Config('config/ssh.yaml')
+windowConfig = Config('config/window.yaml')
+
+sshConfig.PrivateKeyPath = os.path.expanduser(sshConfig.PrivateKeyPath)
+sshConfig.CacheDir = os.path.expanduser(sshConfig.CacheDir)

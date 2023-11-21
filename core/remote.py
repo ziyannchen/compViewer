@@ -1,6 +1,5 @@
+import os
 import paramiko
-
-from .media import load_image
 
 class SSHConnection(object):
     def __init__(self, host, port, user, password=None, private_key_path=None):
@@ -14,6 +13,7 @@ class SSHConnection(object):
         self._createSSHClient()
 
     def _createSSHClient(self):
+        # SSH + cat is not encrypted
         client = paramiko.SSHClient()
         client.load_system_host_keys()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -26,6 +26,7 @@ class SSHConnection(object):
         print(f'Connected to', self.host, '...')
     
     def _createSFTPClient(self):
+        # TODO: SFTP not used now, may be used in the future for security
         client = paramiko.Transport((self.host, self.port))
         client.connect(username=self.user, password=self.password)
         self.client = client
@@ -35,20 +36,18 @@ class SSHConnection(object):
         stdin, stdout, stderr = self.client.exec_command(command)
         return bool(stderr.read())
 
-    def get_remote_file_content(self, filename, type='pixmap'):
+    def get_remote_file_content(self, filename):
         '''
         Args:
             filename: remote file path
-            type: 'bytes' or 'pixmap'
+        Return: bytes file content
         '''
         command = f'cat {filename}'
         stdin, stdout, stderr = self.client.exec_command(command)
         file_bytes = stdout.read() # file bytes
-        if type == 'pixmap':
-            return load_image(bytes=file_bytes)
         return file_bytes
 
-    def getAllFiles(self, folder, suffix=('.png', '.jpg', '.jpeg')):
+    def getAllFiles(self, folder, suffix=('.png', '.jpg', '.jpeg'), full_path=False):
         if isinstance(suffix, str):
             suffix = (suffix)
         cmd_suffix = f' {folder}/*'.join(suffix)
@@ -58,7 +57,9 @@ class SSHConnection(object):
         file_list = stdout.read().decode('utf-8').split('\n')
         # remove all empty string
         file_list = [s.strip() for s in file_list if s.strip()]
-        return file_list
+        if full_path:
+            return file_list
+        return [os.path.basename(f) for f in file_list]
 
     def __del__(self):
         self.client.close()

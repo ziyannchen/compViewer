@@ -2,11 +2,14 @@ import os
 from natsort import natsorted
 
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QDialog
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from utils.file import copyFile, scanDir
+# ssh
+from config import sshConfig
+from .dialogs import Dialog
 
 SUPPORTED_FILES = ('.png', '.jpg', '.jpeg', '.mp4')
 
@@ -29,7 +32,7 @@ class fileHandler:
         else:
             self.imageFilenames = list(set((*value, *self.imageFilenames)))
         self.imageFilenames = natsorted(self.imageFilenames)
-        print(f'Total {len(self.imageFilenames)} files counted')
+        # print(f'Total {len(self.imageFilenames)} files counted')
 
     def checkFolder(self, verbose=False):
         for filename in self.imageFilenames:
@@ -53,8 +56,8 @@ class fileHandler:
         self.checkFolder()
 
         # clear the view and scene
-        self.graphicsViews[base_key].scene().clear()
-        self.graphicsViews[base_key].setScene(None)
+        # remove QGraphicsView frmo main window
+        self.graphicsViews[base_key].setParent(None)
         del self.graphicsViews[base_key]
     
     def createGraphicsView(self, base_key):
@@ -74,7 +77,7 @@ class fileHandler:
                 return
             self.folderPaths[base_key] = folder
             self.createGraphicsView(base_key)
-            tmp_files = scan_func(folder=self.folderPaths[base_key], suffix=SUPPORTED_FILES)
+            tmp_files = scan_func(folder=self.folderPaths[base_key], suffix=SUPPORTED_FILES, full_path=False)
             # print('tmp files', tmp_files)
             print(f'Folder {folder} loaded, {len(tmp_files)} files found')
 
@@ -90,12 +93,10 @@ class fileHandler:
 
     def loadAllSubFolders(self):
         # target = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
-        target = '/Users/celine/Desktop/Benchmark/test'
-        # target = '/Users/celine/Desktop/DiffBIR/data/LFW'
+        # target = '/Users/celine/Desktop/Benchmark/test'
+        target = '/Users/celine/Desktop/DiffBIR/data/LFW'
         if not target:
             return
-        self.initAll()
-        # target = '/Users/celine/Downloads/LFW'
         target = QDir.toNativeSeparators(target)
         dirs = natsorted(os.listdir(target))
         for d in dirs:
@@ -103,6 +104,16 @@ class fileHandler:
                 continue
             folder = os.path.join(target, d)
             self.loadFolder(folder)
+        self.main_window.update()
+    
+    def loadFromRemote(self, path_list, ssh_client):
+        # path_list = '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/5000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/10000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/20000'.split(';')
+        for path in path_list:
+            # print(self.ssh_connector.getAllFiles(path))
+            self.loadFolder(
+                path, 
+                check_dir=any, # path not need to be checked for files are from ls clause
+                scan_func=ssh_client.getAllFiles)
         self.main_window.update()
     
     def actionSaveTriggered(self):
@@ -137,6 +148,10 @@ class fileHandler:
                     info_str['text'] = f'Copy {img_path} failed\n'
         QMessageBox.information(self.main_window, info_str['title'], info_str['text'])
 
+    def __del__(self):
+        for key, view in self.graphicsViews.items():
+            view.setParent(None)
+            del view
 
 def captureView(view, remove_item=None):
     if remove_item is not None:

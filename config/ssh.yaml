@@ -1,6 +1,8 @@
 # recommend to use ssh-key and to avoid password input in the app
-PAI-aliyun-A100:
+test_host1:
   HostName: 8.130.120.199
   Port: 30030
   User: chenziyan
-  PrivateKeyPath: ~/.ssh/id_rsa
+  
+PrivateKeyPath: ~/.ssh/id_rsa
+CacheDir: ~/.cache/compViewer/remote/ # 缓存远程媒体到本地的文件目录
