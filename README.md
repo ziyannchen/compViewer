@@ -1,10 +1,14 @@
 # compViewer
 
-compViewer提供单数据集多个不同baseline进行比较的网格状媒体浏览工具。
+compViewer提供**多个不同baseline**进行网格状浏览工具。
+
+Tech stack:
+- PyQt5 (for UI)
+- paramiko (for remote acess)
 
 ## Features
 
-- 媒体支持
+- **媒体支持**
     - 图片
     - 视频
 - access
