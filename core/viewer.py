@@ -86,9 +86,13 @@ class ViewerApp(QMainWindow, MainWindowUI):
     def bindEvent(self):
         # file
         self.actionLoadSubFolders.triggered.connect(self.loadAllSubFolders)
-        self.actionAdd1Folder.triggered.connect(self.file_handler.addFolder)
+        # need to use key lambda when call func from prop even though no param passed
+        self.actionAdd1Folder.triggered.connect(lambda: self.file_handler.addFolder())
+        # TODO: del assigned dir
         self.actionDel1Folder.triggered.connect(lambda: self.file_handler.deleteFolder())
-        self.actionSave.triggered.connect(self.file_handler.actionSaveTriggered)
+        self.actionSave.triggered.connect(lambda: self.file_handler.saveView())
+        # self.actionSave.triggered.connect(self.save)
+        # TODO: log in assigned host
         self.actionOpenRemote.triggered.connect(lambda: self.connectRemote('test_host1'))
 
         self.actionGoTo.triggered.connect(self.actionGoToTriggered)
@@ -187,7 +191,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
             user = cfg['User'],
             port = cfg['Port'],
             private_key_path=sshConfig.PrivateKeyPath)
-        print(self.ssh_client)
+        # print(self.ssh_client)
         dialog = Dialog(title=f'Remote '+cfg['HostName'], label='paths(split by ;)', edit='text')
         result = dialog.exec_()
         if result == QDialog.Accepted:
@@ -255,10 +259,17 @@ class ViewerApp(QMainWindow, MainWindowUI):
         if result == QDialog.Accepted:
             input_text = dialog.get_input_text()
             # print("Input Text:", input_text)
-            index = fuzzySearchList(input_text, self.imageFilenames) if by_name else int(input_text)
-            if index > len(self.imageFilenames) - 1 or index < 0:
-                QMessageBox.Critical(f'Invalid Index {index}!')
-                return 
+            if label == 'Name':
+                index = fuzzySearchList(input_text, self.imageFilenames)
+                if index == -1:
+                    QMessageBox.critical(self, "Name Not found", f'No filename includes \'{input_text}\'!')
+                    return
+            else:
+                index = int(input_text)
+                #TODO: check int
+                if index > len(self.imageFilenames) - 1 or index < 0:
+                    QMessageBox.critical(f'Invalid Index {index}!')
+                    return 
             self.currentIndex = index
             self.update()
         

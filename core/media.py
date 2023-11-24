@@ -94,7 +94,7 @@ class QMediaObj:
         a typical path: dataset(folder)/method1(key)/xx.png 
         '''
         # create new title
-        print('get title', file_path)
+        # print('get title', file_path)
         dataset, key = self.fdir.split(os.sep)
         title_str = '\n'.join([dataset, key[:15], os.path.basename(file_path).split('.')[0]])
         

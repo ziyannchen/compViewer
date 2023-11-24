@@ -92,9 +92,9 @@ class fileHandler:
         self.main_window.update()
 
     def loadAllSubFolders(self):
-        # target = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
+        target = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
         # target = '/Users/celine/Desktop/Benchmark/test'
-        target = '/Users/celine/Desktop/DiffBIR/data/LFW'
+        # target = '/Users/celine/Desktop/DiffBIR/data/LFW'
         if not target:
             return
         target = QDir.toNativeSeparators(target)
@@ -116,13 +116,13 @@ class fileHandler:
                 scan_func=ssh_client.getAllFiles)
         self.main_window.update()
     
-    def actionSaveTriggered(self):
+    def saveView(self):
         if self.currentIndex == -1:
             print('No data to save!')
             return 
         save_folder = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
         # save_folder = '/Users/celine/Desktop/DiffBIR/head figure/BSR_crop'
-        print('save_folder', save_folder)
+        # print('save_folder', save_folder)
         if save_folder:
             self.save_dir = save_folder
             save_folder = QDir.toNativeSeparators(save_folder)
