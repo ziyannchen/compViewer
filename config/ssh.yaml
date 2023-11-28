@@ -1,7 +1,7 @@
 # recommend to use ssh-key and to avoid password input in the app
 test_host1:
   HostName: 8.130.120.199
-  Port: 30030
+  Port: 30185
   User: chenziyan
   
 PrivateKeyPath: ~/.ssh/id_rsa

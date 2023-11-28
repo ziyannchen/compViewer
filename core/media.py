@@ -27,14 +27,16 @@ def load_image(path=None, bytes=None, scale=True) -> QtGui.QPixmap:
         pixmap.scaledToWidth(windowConfig.IMG_SIZE_W)
     return pixmap
 
-def load_video(path, bytes=None, cache_dir=os.path.join(sshConfig.CacheDir, 'video')) -> QUrl:
+def load_video(path, bytes=None) -> QUrl:
     '''Load QUrl from local video file path or file bytes.
     Args:
         file: str, load video from a local video file path.
     '''
     if not os.path.exists(path):
         assert bytes, f'File not provided and {path} not exists.'
+        cache_dir = os.path.dirname(path)
         os.makedirs(cache_dir, exist_ok=True)
+        # print('cache_dir', cache_dir)
         with open(path, "wb") as f:
             f.write(bytes)
             print('Caching video file to', path, '...')
@@ -113,6 +115,12 @@ class QMediaObj:
         main_window.titles[key] = qText
         # view.scene().addItem(qText)
         return qText
+    
+def saveMediaBytes(path, file_bytes, fdir):
+    '''Save media bytes to local path.'''
+    os.makedirs(fdir, exist_ok=True)
+    with open(path, 'wb') as f:
+        f.write(file_bytes)
 
 def requestQMedia(path, file_bytes=None, fdir=None):
     '''Request media object from local or remote. Support image and video media reading.'''

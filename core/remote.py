@@ -2,13 +2,14 @@ import os
 import paramiko
 
 class SSHConnection(object):
-    def __init__(self, host, port, user, password=None, private_key_path=None):
+    def __init__(self, host, port, user, password=None, private_key_path=None, cfg=None):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.private_key_path = private_key_path
         assert self.password or self.private_key_path
+        self.cfg = cfg
 
         self._createSSHClient()
 

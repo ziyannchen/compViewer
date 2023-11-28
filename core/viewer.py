@@ -17,7 +17,7 @@ from .events import EventHandler
 class ViewerApp(QMainWindow, MainWindowUI):
     def __init__(self):
         super(ViewerApp, self).__init__()
-        # for debug
+        # for time-consumption debug
         import cProfile
         self.profiler = cProfile.Profile()
 
@@ -99,34 +99,25 @@ class ViewerApp(QMainWindow, MainWindowUI):
         self.actionGoToName.triggered.connect(lambda: self.actionGoToTriggered(by_name=True))
 
     def update(self):
-        def get_dir(filename):
-            loc = '' # define media file is in local or remote
-            if ':' in filename:  loc, filename = filename.split(':')
-            if loc == 'cache':
-                cached_dir = os.path.join(sshConfig.CacheDir, relative_fdir)
-                print(f'Reading', filename, f'from cached folder {cached_dir}')
-                return cached_dir, loc
-            return self.folderPaths[key], loc
-        
         # self.profiler.enable()
         filename = self.imageFilenames[self.currentIndex]
         for idx, (key, view) in enumerate(self.graphicsViews.items()):
             relative_fdir = os.path.join(self.folderPaths[key].split(os.sep)[-2], key)
-            folder, loc = get_dir(filename)
-            file_path = os.path.join(folder, filename)
+            fpath = os.path.join(self.folderPaths[key], filename)
             # add media obj
             file_bytes = None
-            if self.ssh_client is not None and loc != 'cache':
+            if self.ssh_client is not None:
                 # media file can only be access from remote, read remote file bytes
                 # remote bytes will be cached to the local dir automatically when request qMedia from bytes
                 # TODO: currently cache video only
-                file_bytes = self.ssh_client.get_remote_file_content(file_path) # file bytes
+                fpath_local = os.path.join(sshConfig.CacheDir, relative_fdir, filename)
+                if not os.path.exists(fpath_local):
+                    file_bytes = self.ssh_client.get_remote_file_content(fpath) # file bytes
                 # replace with local sign to avoid repeated remote access
-                file_path = os.path.join(sshConfig.CacheDir, relative_fdir, filename)
-                self.imageFilenames[self.currentIndex] = 'cache:' + filename
+                fpath = fpath_local
 
-            qMedia = requestQMedia(file_path, file_bytes=file_bytes, fdir=relative_fdir)
-            qText = qMedia.get_title(self, file_path)
+            qMedia = requestQMedia(fpath, file_bytes=file_bytes, fdir=relative_fdir)
+            qText = qMedia.get_title(self, fpath)
             if not self.view_adjusted: self.adjustGraphicsView(idx, qMedia.width, qMedia.height)
             view.scene().clear() # scene clearing after qText created, avoid qText to be cleared
             try:
@@ -147,6 +138,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
                 used to 1) calculate the position of the view in the main window, and 2) set view geometry.
             media_w: media width in the scene.
             media_h: media height in the scene.
+        TODO: the computation of x_num, vsize need to be optimized.
         '''
         border = self.windowCfg.BORDER
         x_margin, y_margin = self.windowCfg.MARGIN_W, self.windowCfg.MARGIN_H
@@ -160,8 +152,10 @@ class ViewerApp(QMainWindow, MainWindowUI):
         if x_num == 'auto':
             # 预设的media面积远大于屏幕面积，需要调整view的缩放比例
             v_scale = max(1, media_num*media_h*media_w // (screen_w*screen_h) - 1)
+            print(v_scale)
             vsize_w /= v_scale; vsize_h /= v_scale
             self.windowCfg.X_NUM = x_num = max(1, (screen_w - 2 * x_margin) // (vsize_w + border))
+            print(x_num, 'screen w', screen_w, 'vsize_w', vsize_w + border)
         y_num = math.ceil(media_num / x_num)
 
         # readjust unsuitable view size to fit the app screen window
@@ -171,7 +165,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
         if y_num * vsize_h + border > screen_h:
             vsize_h = (screen_h - 2 * y_margin - border * (y_num - 1)) // y_num
             vsize_w = (media_w / media_h) * vsize_h # keep the aspect ratio
-        # print(vsize_w, vsize_h)
+        print('vsize_w adjusted', vsize_w, 'vsize_h adjusted', vsize_h)
         
         x_crt = idx % (x_num)
         y_crt = idx // (x_num)
@@ -184,22 +178,39 @@ class ViewerApp(QMainWindow, MainWindowUI):
         self.initApp() # init app window
         self.file_handler.loadAllSubFolders()
     
-    def connectRemote(self, cfg_name):
-        cfg = getattr(sshConfig, cfg_name)
-        self.ssh_client = SSHConnection(
-            host = cfg['HostName'],
-            user = cfg['User'],
-            port = cfg['Port'],
-            private_key_path=sshConfig.PrivateKeyPath)
-        # print(self.ssh_client)
+    def loadSSHFolders(self):
+        cfg = self.ssh_client.cfg
         dialog = Dialog(title=f'Remote '+cfg['HostName'], label='paths(split by ;)', edit='text')
         result = dialog.exec_()
         if result == QDialog.Accepted:
             input_text = dialog.get_input_text()
-            input_text = path_list = '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization_mp4/50000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/results/gfpgan_unaligned/vfhq/interval1_LR_Blind_mp4/restored_faces'
-            path_list = input_text.split(';')
+            path_list = [p.strip() for p in input_text.split(';')] #parse path string
+            # path_list = [
+            #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/results/gfpgan_unaligned/vfhq/interval1_LR_Blind_mp4/restored_faces',
+            #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization_mp4/50000',
+            #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization_mp4/480000']
             self.initApp(keep_ssh=True) # init app window
             self.file_handler.loadFromRemote(path_list, self.ssh_client)
+
+    def connectRemote(self, cfg_name):
+        cfg = getattr(sshConfig, cfg_name)
+        ssh_flag = True
+        try:
+            self.ssh_client = SSHConnection(
+                host = cfg['HostName'],
+                user = cfg['User'],
+                port = cfg['Port'],
+                private_key_path=sshConfig.PrivateKeyPath,
+                cfg=cfg)
+        except Exception as e:
+            print(e)
+            ssh_flag = False
+            # QMessageBox.critical(self, "SSH Connection Error", f'Could not connect to {cfg["HostName"]}!')
+            QMessageBox.critical(self, "SSH Error", f'{e}!')
+
+        if ssh_flag:
+            # print(self.ssh_client)
+            self.loadSSHFolders()
 
     def keyPressEvent(self, event):
         EventHandler.keyPressedEvent(self, event)
@@ -248,7 +259,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
     def resizeEvent(self, event):
         # 调用基类的 resizeEvent 方法
         super(ViewerApp, self).resizeEvent(event)
-        windowConfig.WINDOW_SIZE_W = 'auto'
+        self.windowCfg.X_NUM = 'auto'
         # readjust view grid when the app window resized
         self.view_adjusted = False
 

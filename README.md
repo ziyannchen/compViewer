@@ -73,4 +73,12 @@ lfw_face
 
 连接成功后在挑出来的对话框中的textEdit输入你想要对比的文件夹路径(用英文分号;分割)，将自动加载显示。
 
+
+#### Special Features
 - Local cache：在请求远程资源显示到窗口中时，将自动缓存到本地ssh.yaml中配置的CacheDir，来节约ssh传输带来的开销。
+
+#### 可能的异常
+目前可能因为多文件远程传输，会存在一些小问题，但不妨碍正常的浏览。
+- 加载卡顿 If you feel an obvious pause when shifting to another view, it's most probably from the remote ssh file-loading costs, which usually takes 1s for each video.
+
+- 空白的媒体窗口视图 If you encounter empty unit media window view(s) but not due to missing media source, try switching to another view and back to check if it's normal (Bug not found currenlt).

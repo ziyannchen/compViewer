@@ -3,7 +3,7 @@ MARGIN_H: 10 # 定义画面上下的margin
 MARGIN_W: 10
 
 # Media grid
-BORDER: 10 # 定义每个图片窗口之间的间隔距离
+BORDER: 5 # 定义每个图片窗口之间的间隔距离
 X_NUM: auto # 一行显示多少张图片/视频
 
 # Media window

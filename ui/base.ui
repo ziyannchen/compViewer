@@ -35,11 +35,13 @@
     <addaction name="separator"/>
     <addaction name="actionOpenRemote"/>
    </widget>
-   <widget class="QMenu" name="menuSettings">
+   <widget class="QMenu" name="menuConfigs">
     <property name="title">
-     <string>Settings</string>
+     <string>Configs</string>
     </property>
-    <addaction name="actionConfigRemote"/>
+    <addaction name="actionWindow"/>
+    <addaction name="separator"/>
+    <addaction name="actionConfigSSH"/>
    </widget>
    <widget class="QMenu" name="menuAction">
     <property name="title">
@@ -51,7 +53,7 @@
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuAction"/>
-   <addaction name="menuSettings"/>
+   <addaction name="menuConfigs"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionLoadSubFolders">
@@ -89,9 +91,14 @@
     <string>Open remote</string>
    </property>
   </action>
-  <action name="actionConfigRemote">
+  <action name="actionConfigSSH">
    <property name="text">
-    <string>Config remote</string>
+    <string>SSH</string>
+   </property>
+  </action>
+  <action name="actionWindow">
+   <property name="text">
+    <string>Window</string>
    </property>
   </action>
  </widget>
