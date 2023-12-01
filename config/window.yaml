@@ -4,7 +4,8 @@ MARGIN_W: 10
 
 # Media grid
 BORDER: 5 # 定义每个图片窗口之间的间隔距离
-X_NUM: auto # 一行显示多少张图片/视频
+# X_NUM: auto # 一行显示多少张图片/视频
+X_NUM: 3 # 一行显示多少张图片/视频
 
 # Media window
 # 每个图片窗口大小 auto: 自动计算window长宽，根据app的窗体大小调整

@@ -1,31 +1,35 @@
 # compViewer
-
-compViewer提供**多个不同baseline**进行网格状浏览工具。
+> compViewer – An utility to effortlessly navigate and compare multiple media windows, e.g. multiple baselines. \
+compViewer - 一个提供**多个不同baseline**进行方便地网格状浏览的工具。
 
 Tech stack:
 - PyQt5 (for UI)
-- paramiko (for remote acess)
+- paramiko (for remote access)
 
 ## Features
 
 - **媒体支持**
     - 图片
     - 视频
-- access
+- **access**
     - 本地文件访问
     - 远程服务器文件访问(同时进行本地文件缓存)
-- 索引
+- **索引**
     - 根据index索引
     - 根据文件名模糊查找
-- 保存
-    - 当前视图所有图片到单个文件夹
+- **保存**
+    - 保存当前视图所有图片到单个文件夹
 
 ## Instructions
 ### 基本设置
 
-- 在`core/config.py`中填写等基础设置。
+在`config`下的.yaml文件中填写等基础设置。
 
-p.s. 可以只填写IMG_SIZE_W，这个大小最好按照图片实际的宽来填写，因为会影响grid中显示的图像分辨率。
+- 窗口设置`window.yaml`
+
+    p.s. 可以只填写IMG_SIZE_W，这个大小最好按照图片实际的宽来填写，因为该大小会影响grid中显示的图像分辨率。
+
+- ssh远程服务器设置`ssh.yaml`
 
 ### 打开/删除文件夹
 菜单File

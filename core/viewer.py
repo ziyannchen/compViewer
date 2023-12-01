@@ -102,22 +102,30 @@ class ViewerApp(QMainWindow, MainWindowUI):
         # self.profiler.enable()
         filename = self.imageFilenames[self.currentIndex]
         for idx, (key, view) in enumerate(self.graphicsViews.items()):
-            relative_fdir = os.path.join(self.folderPaths[key].split(os.sep)[-2], key)
+            paths = self.folderPaths[key].split(os.sep)
+            relative_fdir = os.path.join(paths[-3], paths[-2], key)
             fpath = os.path.join(self.folderPaths[key], filename)
             # add media obj
             file_bytes = None
             if self.ssh_client is not None:
                 # media file can only be access from remote, read remote file bytes
                 # remote bytes will be cached to the local dir automatically when request qMedia from bytes
-                # TODO: currently cache video only
+                # TODO: currently cache video only.
+                # TODO: support HASH to update local file
+                # FIXME: media file cleared for unknown reason
                 fpath_local = os.path.join(sshConfig.CacheDir, relative_fdir, filename)
                 if not os.path.exists(fpath_local):
-                    file_bytes = self.ssh_client.get_remote_file_content(fpath) # file bytes
+                    try:
+                        file_bytes = self.ssh_client.get_remote_file_content(fpath) # file bytes
+                    except Exception as e:
+                        print(e)
+                        QMessageBox.critical(self, "SSH Error", f'{e}!')
+                        return
                 # replace with local sign to avoid repeated remote access
                 fpath = fpath_local
 
             qMedia = requestQMedia(fpath, file_bytes=file_bytes, fdir=relative_fdir)
-            qText = qMedia.get_title(self, fpath)
+            qText = qMedia.get_title(self, fpath, key)
             if not self.view_adjusted: self.adjustGraphicsView(idx, qMedia.width, qMedia.height)
             view.scene().clear() # scene clearing after qText created, avoid qText to be cleared
             try:
@@ -149,13 +157,13 @@ class ViewerApp(QMainWindow, MainWindowUI):
         # screen_w, screen_h = screen.width(), screen.height()
         x_num = self.windowCfg.X_NUM
         media_num = len(self.folderPaths.keys())
+        print(media_num)
         if x_num == 'auto':
             # 预设的media面积远大于屏幕面积，需要调整view的缩放比例
             v_scale = max(1, media_num*media_h*media_w // (screen_w*screen_h) - 1)
-            print(v_scale)
             vsize_w /= v_scale; vsize_h /= v_scale
             self.windowCfg.X_NUM = x_num = max(1, (screen_w - 2 * x_margin) // (vsize_w + border))
-            print(x_num, 'screen w', screen_w, 'vsize_w', vsize_w + border)
+            # print(x_num, 'screen w', screen_w, 'vsize_w', vsize_w + border)
         y_num = math.ceil(media_num / x_num)
 
         # readjust unsuitable view size to fit the app screen window
@@ -165,7 +173,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
         if y_num * vsize_h + border > screen_h:
             vsize_h = (screen_h - 2 * y_margin - border * (y_num - 1)) // y_num
             vsize_w = (media_w / media_h) * vsize_h # keep the aspect ratio
-        print('vsize_w adjusted', vsize_w, 'vsize_h adjusted', vsize_h)
+        # print('vsize_w adjusted', vsize_w, 'vsize_h adjusted', vsize_h)
         
         x_crt = idx % (x_num)
         y_crt = idx // (x_num)
@@ -187,8 +195,12 @@ class ViewerApp(QMainWindow, MainWindowUI):
             path_list = [p.strip() for p in input_text.split(';')] #parse path string
             # path_list = [
             #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/results/gfpgan_unaligned/vfhq/interval1_LR_Blind_mp4/restored_faces',
+            #     # '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization_mp4/5000',
             #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization_mp4/50000',
-            #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization_mp4/480000']
+            #     '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v2_sliding_window/visualization_mp4/30000',
+            #     # '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/archived/train_GFPGANv3_video_v1_sliding_window_1_1109_100k/visualization_mp4/90000',
+            #     '/cpfs01/user/chenziyan/codes/GFPGAN/experiments/train_GFPGANv4_video_sliding_window/visualization_mp4/30000'
+            #     ]
             self.initApp(keep_ssh=True) # init app window
             self.file_handler.loadFromRemote(path_list, self.ssh_client)
 
@@ -259,7 +271,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
     def resizeEvent(self, event):
         # 调用基类的 resizeEvent 方法
         super(ViewerApp, self).resizeEvent(event)
-        self.windowCfg.X_NUM = 'auto'
+        self.windowCfg.X_NUM = windowConfig.X_NUM # reset x_num
         # readjust view grid when the app window resized
         self.view_adjusted = False
 

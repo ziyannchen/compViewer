@@ -91,13 +91,13 @@ class QMediaObj:
         self.width, self.height = pixmap.width(), pixmap.height()
         self.item = pixmap
 
-    def get_title(self, main_window, file_path, check_path_func=None):
+    def get_title(self, main_window, file_path, key, check_path_func=None):
         '''
         a typical path: dataset(folder)/method1(key)/xx.png 
         '''
         # create new title
         # print('get title', file_path)
-        dataset, key = self.fdir.split(os.sep)
+        dataset = self.fdir.split(os.sep)[0]
         title_str = '\n'.join([dataset, key[:15], os.path.basename(file_path).split('.')[0]])
         
         check_path_func = os.path.exists if check_path_func is None else check_path_func
@@ -115,7 +115,10 @@ class QMediaObj:
         main_window.titles[key] = qText
         # view.scene().addItem(qText)
         return qText
-    
+
+    def __del__(self):
+        del self.item
+
 def saveMediaBytes(path, file_bytes, fdir):
     '''Save media bytes to local path.'''
     os.makedirs(fdir, exist_ok=True)

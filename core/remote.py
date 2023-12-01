@@ -9,7 +9,9 @@ class SSHConnection(object):
         self.password = password
         self.private_key_path = private_key_path
         assert self.password or self.private_key_path
+
         self.cfg = cfg
+        self.error_callback = None # TODO: error callback from mainwindow, all ssh error shoube be handled by remote object instead of the main viewer object
 
         self._createSSHClient()
 

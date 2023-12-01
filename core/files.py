@@ -70,8 +70,16 @@ class fileHandler:
         self.graphicsViews[base_key] = view
 
     def loadFolder(self, folder, check_dir=os.path.isdir, scan_func=scanDir):
+        def check_key(base_key, folder):
+            if base_key in self.folderPaths.keys():
+                pfolder = os.path.dirname(folder)
+                base_key = os.path.join(os.path.basename(pfolder), base_key)
+                return check_key(base_key, pfolder)
+            return base_key
+        
         if check_dir(folder):
             base_key = os.path.basename(folder)
+            base_key = check_key(base_key, folder)
             if base_key in self.folderPaths.keys():
                 print(f'Folder {folder} already loaded')
                 return
