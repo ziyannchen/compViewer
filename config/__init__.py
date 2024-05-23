@@ -8,8 +8,8 @@ class Config:
         for key, value in config.items():
             setattr(self, key, value)
 
-sshConfig = Config('config/ssh.yaml')
 windowConfig = Config('config/window.yaml')
+windowConfig.CACHE_DIR = os.path.expanduser(windowConfig.CACHE_DIR)
 
-sshConfig.PrivateKeyPath = os.path.expanduser(sshConfig.PrivateKeyPath)
-sshConfig.CacheDir = os.path.expanduser(sshConfig.CacheDir)
+for key, value in windowConfig.SUPPORTED_FILES.items():
+    windowConfig.SUPPORTED_FILES[key] = tuple(value)

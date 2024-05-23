@@ -1,5 +1,6 @@
 # Pillow
 # imagehash
+opencv-python
 natsort
 pyqt5
 # sip==5.0.1
@@ -8,6 +9,4 @@ pyqt5
 # for ssh
 pyyaml
 paramiko
-
-# for video
-cv2
+# ssh-config

@@ -3,7 +3,7 @@ import os
 import yaml
 from collections import OrderedDict
 
-def copyFile(dst, src, verbose=True):
+def copy_file(dst, src, verbose=True):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     if not os.path.exists(src):
         if verbose:
@@ -12,28 +12,34 @@ def copyFile(dst, src, verbose=True):
     
     return shutil.copyfile(src, dst)
 
-def fuzzySearch(pattern, string):
+def fuzzy_search(pattern, string):
     pattern = pattern.lower()
     string = string.lower()
     return pattern in string
 
-def fuzzySearchList(pattern, list):
+def fuzzy_search_list(pattern, list):
     for index, item in enumerate(list):
-        if fuzzySearch(pattern, item):
+        if fuzzy_search(pattern, item):
             return index
     return -1
 
-def scanDir(folder, recursive=False, full_path=False, suffix=('.png', '.jpg', '.jpeg')):
+def scan_dir(folder, recursive=True, full_path=False, suffix=('.png', '.jpg', '.jpeg')):
         '''
         Args:
-            recursive: to load images in folder and subfolders recursively. (TODO)
+            recursive: to load images in folder and subfolders recursively.
+            full_path: return full path or relative path.
         '''
         if not recursive:
             filenames = [f for f in os.listdir(folder) if f.endswith(suffix)]
-        if full_path:
-            filenames = [os.path.join(folder, f) for f in filenames]
-        filenames.sort()
+            if full_path:
+                filenames = [os.path.join(folder, f) for f in filenames]
+        else:
+            for root, _, files in os.walk(folder):
+                filenames = [os.path.join(root, file) for file in files if file.endswith(suffix)]
+            if not full_path:
+                filenames = [os.path.relpath(abs_path, folder) for abs_path in filenames]
 
+        filenames.sort()
         return filenames
 
 def yaml_load(f):

@@ -1,8 +1,0 @@
-# recommend to use ssh-key and to avoid password input in the app
-test_host1:
-  HostName: 8.130.120.199
-  Port: 30185
-  User: chenziyan
-  
-PrivateKeyPath: ~/.ssh/id_rsa
-CacheDir: ~/.cache/compViewer/remote/ # 缓存远程媒体到本地的文件目录

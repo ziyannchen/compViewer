@@ -1,17 +1,15 @@
 import os
 from natsort import natsorted
 
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QDialog
+
 from PyQt5.QtCore import QDir, Qt
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
-from utils.file import copyFile, scanDir
-# ssh
-from config import sshConfig
-from .dialogs import Dialog
+from utils.file import copy_file, scan_dir
+from config import windowConfig
+from core.view import captureView
 
-SUPPORTED_FILES = ('.png', '.jpg', '.jpeg', '.mp4')
+SUPPORTED_FILES = sum(windowConfig.SUPPORTED_FILES.values(), ())
 
 class fileHandler:
     def __init__(self, main_window) -> None:
@@ -20,10 +18,8 @@ class fileHandler:
         
     def initAll(self):
         self.folderPaths = {}
-        self.graphicsViews = {}
 
         self.imageFilenames = None
-        self.currentIndex = -1  # 当前显示的图片索引
         self.titles = {}
     
     def set_imageFilenames(self, value):
@@ -50,134 +46,136 @@ class fileHandler:
         '''
         if len(self.folderPaths) == 0:
             print('No folder loaded')
-            return
+            return None
         base_key = list(self.folderPaths.keys())[-1]
         del self.folderPaths[base_key]
         self.checkFolder()
+        return base_key
 
-        # clear the view and scene
-        # remove QGraphicsView frmo main window
-        self.graphicsViews[base_key].setParent(None)
-        del self.graphicsViews[base_key]
-    
-    def createGraphicsView(self, base_key):
-        # view = SyncedGraphicsView(self)
-        view = QGraphicsView(self.main_window)
-        view.setDragMode(QGraphicsView.ScrollHandDrag)
-        scene = QGraphicsScene(self.main_window)
-        view.setScene(scene)
-        # print('view and scene created')
-        self.graphicsViews[base_key] = view
+    def loadFolder(self, folder, check_dir=os.path.isdir, scan_func=scan_dir):
+        # TODO: 暂不支持文件夹嵌套
 
-    def loadFolder(self, folder, check_dir=os.path.isdir, scan_func=scanDir):
-        def check_key(base_key, folder):
-            if base_key in self.folderPaths.keys():
-                pfolder = os.path.dirname(folder)
-                base_key = os.path.join(os.path.basename(pfolder), base_key)
-                return check_key(base_key, pfolder)
-            return base_key
-        
+        # def check_key(base_key, folder):
+        #     if base_key in self.folderPaths.keys():
+        #         pfolder = os.path.dirname(folder)
+        #         base_key = os.path.join(os.path.basename(pfolder), base_key)
+        #         return check_key(base_key, pfolder)
+        #     return base_key
+        print(folder, os.path.isdir(folder))
+        tmp_files = []
+        base_key = None
         if check_dir(folder):
             base_key = os.path.basename(folder)
-            base_key = check_key(base_key, folder)
+            # base_key = check_key(base_key, folder)
+            print(base_key, self.folderPaths.keys(), base_key in self.folderPaths.keys())
             if base_key in self.folderPaths.keys():
                 print(f'Folder {folder} already loaded')
-                return
+                return -1, base_key
             self.folderPaths[base_key] = folder
-            self.createGraphicsView(base_key)
+            # self.createGraphicsView(base_key)
+            
             tmp_files = scan_func(folder=self.folderPaths[base_key], suffix=SUPPORTED_FILES, full_path=False)
-            # print('tmp files', tmp_files)
-            print(f'Folder {folder} loaded, {len(tmp_files)} files found')
+            if windowConfig.DEBUG:
+                print(f'Indexing from base key ', base_key)
+                print(f'Folder {folder} loaded, {len(tmp_files)} files found')
 
-            # in case of different file length in folders, collect all file names
-            self.set_imageFilenames(tmp_files)
-            self.currentIndex = 0 if len(self.imageFilenames) > 0 else -1
+        self.set_imageFilenames(tmp_files)
+        return len(tmp_files), base_key
 
-    def addFolder(self):
-        folder = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
-        # folder = '/Users/celine/Desktop/Benchmark/gfpgan/video_v1'
-        self.loadFolder(folder)
-        self.main_window.update()
+    def addFolder(self, folder=None, **kargs):
+        if folder is None:
+            all_folders = list(self.folderPaths.values())
+            default_path = all_folders[-1] if len(all_folders) else os.path.expanduser('~')
+            folder = QFileDialog.getExistingDirectory(self.main_window, "Select Folder", default_path)
+        
+        return self.loadFolder(folder, **kargs)
 
-    def loadAllSubFolders(self):
-        target = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
-        # target = '/Users/celine/Desktop/Benchmark/test'
-        # target = '/Users/celine/Desktop/DiffBIR/data/LFW'
-        if not target:
-            return
+    def getAllSubFolders(self, target=None):
+        if target is None:
+            target = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
+            if not target:
+                return []
         target = QDir.toNativeSeparators(target)
         dirs = natsorted(os.listdir(target))
-        for d in dirs:
-            if d.startswith('.'):
-                continue
-            folder = os.path.join(target, d)
-            self.loadFolder(folder)
-        self.main_window.update()
+        print(dirs)
+        return [os.path.join(target, d) for d in dirs if not d.startswith('.')]
     
-    def loadFromRemote(self, path_list, ssh_client):
-        # path_list = '/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/5000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/10000;/cpfs01/user/chenziyan/BFRxBenchmark/tmp/GFPGAN/experiments/train_GFPGANv3_video_v1_sliding_window/visualization/Clip+_HebIzK_LP4+P2+C1+F16589-16715/20000'.split(';')
-        for path in path_list:
-            # print(self.ssh_connector.getAllFiles(path))
-            self.loadFolder(
-                path, 
-                check_dir=any, # path not need to be checked for files are from ls clause
-                scan_func=ssh_client.getAllFiles)
-        self.main_window.update()
+    # def loadFromRemote(self, path_list, ssh_client):
+    #     for path in path_list:
+    #         # print(self.ssh_connector.getAllFiles(path))
+    #         self.loadFolder(path, check_dir=any, # path not need to be checked for files are from ls clause
+    #             scan_func=ssh_client.getAllFiles)
+    #     self.main_window.update()
     
-    def saveView(self):
-        if self.currentIndex == -1:
-            print('No data to save!')
-            return 
-        save_folder = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
-        # save_folder = '/Users/celine/Desktop/DiffBIR/head figure/BSR_crop'
-        # print('save_folder', save_folder)
-        if save_folder:
-            self.save_dir = save_folder
-            save_folder = QDir.toNativeSeparators(save_folder)
-            self.saveImageGroup(save_folder)
-    
-    def saveImageGroup(self, save_dir, scale_view=False):
-        imgname, ext = os.path.splitext(self.imageFilenames[self.currentIndex])
-        save_dir = os.path.join(save_dir, f'{self.currentIndex}_{imgname}')
+    def saveImageGroup(self, graphicsViews, index, save_dir, scale_view=False):
+        imgname, ext = os.path.splitext(self.imageFilenames[index])
+        save_dir = os.path.join(save_dir, f'{index}_{imgname}')
         os.makedirs(save_dir, exist_ok=True)
         
-        info_str = {'title':'Info', 
-                    'text': 'All imgaes are saved susccessfully'}
-        for key, view in self.graphicsViews.items():
+        message_info = ['Info', 'Saved susccessfully']
+        for key, view in graphicsViews.items():
             img_path = os.path.join(self.folderPaths[key], imgname+ext)
             target_path = os.path.join(save_dir, f'{key}{ext}')
             if scale_view:
                 captureView(view, remove_item=self.titles[key]).save(target_path)
                 print('Saved ', target_path)
             else:
-                if not copyFile(target_path, img_path):
+                if not copy_file(target_path, img_path):
                     print(f'Copy {img_path} failed')
-                    info_str['title'] = 'Error'
-                    info_str['text'] = f'Copy {img_path} failed\n'
-        QMessageBox.information(self.main_window, info_str['title'], info_str['text'])
+                    message_info[0] = 'Error'
+                    message_info[1] = f'Copy {img_path} failed\n'
+        QMessageBox.information(self.main_window, *message_info)
 
-    def __del__(self):
-        for key, view in self.graphicsViews.items():
-            view.setParent(None)
-            del view
+def cache_bytes(path, file_bytes, verbose=True):
+    '''Save media bytes to local path.'''
+    save_dir = os.path.dirname(path)
+    os.makedirs(save_dir, exist_ok=True)
+    with open(path, 'wb') as f:
+        f.write(file_bytes)
+    if verbose:
+        print('Caching file bytes to', path)
 
-def captureView(view, remove_item=None):
-    if remove_item is not None:
-        # temporarily remove the item from the view
-        view.scene().removeItem(remove_item)
-    # 获取视图的矩形区域
-    view_rect = view.viewport().rect()
+def read_bytes(path, verbose=True):
+    '''Load media bytes from local path.'''
+    if not os.path.exists(path):
+        if verbose:
+            print(f'File {path} does not exist')
+        return None
+    if verbose:
+        print('Loading file bytes from', path)
+    with open(path, 'rb') as f:
+        return f.read()
+    
+def load_file_bytes(self, paths, key):
+    '''
+    load file from local directory or remote.
+        if load from remote, cache in local temp file for fast access.
+    '''
+    
+    filename = self.imageFilenames[self.currentIndex]
+    relative_fdir = os.path.join(paths[-3], paths[-2], key)
+    fpath = os.path.join(self.folderPaths[key], filename)
 
-    # 创建一个空的QPixmap
-    pixmap = QtGui.QPixmap(view_rect.size())
-    pixmap.fill(Qt.transparent)
-
-    # 使用QPainter将视图内容绘制到pixmap上
-    painter = QtGui.QPainter(pixmap)
-    view.render(painter, source=view_rect)
-    painter.end()
-
-    if remove_item is not None:
-        # add the item back
-        view.scene().addItem(remove_item)
-    return pixmap
+    if self.ssh_client is not None:
+        # read remote media file bytes, and cache to local dirs automatically
+        # TODO: currently cache video only.
+        # TODO: support HASH to update local file
+        # FIXME: media file cleared for unknown reason
+        fpath_local = os.path.join(windowConfig.CACHE_DIR, relative_fdir, filename)
+        if not os.path.exists(fpath_local):
+            try:
+                print('Reading from remote path', fpath)
+                file_bytes = self.ssh_client.get_remote_file_content(fpath) # file bytes
+                cache_bytes(fpath_local, file_bytes)
+            except Exception as e:
+                print(e)
+                QMessageBox.critical(self, "Remote Error ", f'{e}!')
+                return
+        else:
+            file_bytes = read_bytes(fpath)
+        # replace with local sign to avoid repeated remote access
+        fpath = fpath_local
+    else:
+        file_bytes = read_bytes(fpath)
+        
+    return fpath, file_bytes

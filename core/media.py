@@ -2,14 +2,48 @@ import os
 import cv2
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QUrl, Qt, QSizeF
-from PyQt5.QtWidgets import QGraphicsTextItem
+from PyQt5.QtCore import QUrl, Qt, QSizeF, QRect, QRectF
+from PyQt5.QtWidgets import QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsProxyWidget, QLabel
 from PyQt5.QtMultimediaWidgets import QGraphicsVideoItem
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent, QMediaMetaData
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
-from config import windowConfig, sshConfig
+from config import windowConfig
 
-def load_image(path=None, bytes=None, scale=True) -> QtGui.QPixmap:
+class AbstractMedia:
+    def __init__(self, path, bytes=None, view=None):
+        self.path = path
+        self.bytes = bytes
+        self.width = None
+        self.height = None
+        self.item = None
+        self.view = view
+
+    def _load(self):
+        # implement 1) load mead from path or file bytes; 2) do proper resize and add to view.scene()
+        raise NotImplementedError
+
+    def load_media(self):
+        self.view.scene().clear() # scene clearing after qText created, avoid qText to be cleared
+        self._load()
+
+    def set_size(self, w, h):
+        self.width, self.height = w, h
+    
+    def __del__(self):
+        del self.item
+
+def load_gif_obj(path) -> QtGui.QMovie:
+    '''Load QMovie object from local gif file path.
+    Args:
+        path: str, local gif file path.
+    '''
+    assert path.endswith('.gif'), f'Only support .gif file, but got {path}'
+    assert os.path.exists(path), f'File {path} does not exist.'
+    movie = QtGui.QMovie(path)
+    return movie
+
+def load_image_obj(path=None, bytes=None, scale=True) -> QtGui.QPixmap:
     '''Load Qpixmap from local image file path or file bytes.
     Args:
         path: str, load pixel map from a local image file path.
@@ -27,55 +61,31 @@ def load_image(path=None, bytes=None, scale=True) -> QtGui.QPixmap:
         pixmap.scaledToWidth(windowConfig.IMG_SIZE_W)
     return pixmap
 
-def load_video(path, bytes=None) -> QUrl:
-    '''Load QUrl from local video file path or file bytes.
-    Args:
-        file: str, load video from a local video file path.
-    '''
-    if not os.path.exists(path):
-        assert bytes, f'File not provided and {path} not exists.'
-        cache_dir = os.path.dirname(path)
-        os.makedirs(cache_dir, exist_ok=True)
-        # print('cache_dir', cache_dir)
-        with open(path, "wb") as f:
-            f.write(bytes)
-            print('Caching video file to', path, '...')
-    return QUrl.fromLocalFile(path)
-
-class QMediaObj:
-    def __init__(self, path, bytes=None, fdir=None):
-        '''
-        Args:
-            type: str, options: ['image', 'video']
-        '''
-        self.fdir = fdir # 该媒体文件所属父级文件夹
-        self.path = path
-        self.bytes = bytes
-        self.width = None
-        self.height = None
-        # Qmedia object: Qpixmap or QGraphicsVideoItem
-        self.item = None
-
-    def load_video(self):
+class QVideoObj(AbstractMedia):
+    def _load(self):
+        w = windowConfig.IMG_SIZE_W
         self.item = QGraphicsVideoItem()
         media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        qUrl = load_video(self.path, self.bytes)
-        # 设置 QGraphicsVideoItem 显示的内容
-        media_player.setMedia(QMediaContent(qUrl))
+        qUrl = QUrl.fromLocalFile(self.path)
         media_player.setVideoOutput(self.item)
+        if qUrl:
+            # 设置 QGraphicsVideoItem 显示的内容
+            media_player.setMedia(QMediaContent(qUrl))
 
-        # Get geometry information of the video.
-        video_capture = cv2.VideoCapture(self.path)
-        self.width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        video_capture.release()
-        # print(self.path, self.width, self.height)
-        
-        w = windowConfig.IMG_SIZE_W
+            # Get geometry information of the video.
+            video_capture = cv2.VideoCapture(self.path)
+            self.set_size(
+                int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+            video_capture.release()
+            # print(self.path, self.width, self.height)
+            # Set loop count to -1 for infinite loop
+            media_player.stateChanged.connect(lambda state: self.video_state_changed(state, media_player))
+            media_player.play()
+        else:
+            self.width, self.height = w, w
+
         self.item.setSize(QSizeF((self.width // w) * self.height, w))
-        # Set loop count to -1 for infinite loop
-        media_player.stateChanged.connect(lambda state: self.video_state_changed(state, media_player))
-        media_player.play()
+        self.view.scene().addItem(self.item)
     
     def video_state_changed(self, state, player):
         '''Set infinite loop playback for video.'''
@@ -84,57 +94,85 @@ class QMediaObj:
             player.setPosition(0)
             player.play()
 
-    def load_image(self):
-        assert self.path.endswith(('.jpg', '.png', '.jpeg')), f'Only support .jpg, .jpeg or .png for image file, but got {self.path}'
+class QGifObj(AbstractMedia):
+    def _load(self):
+        gif_obj = load_gif_obj(self.path)
         
-        pixmap = load_image(self.path, self.bytes)
-        self.width, self.height = pixmap.width(), pixmap.height()
-        self.item = pixmap
 
-    def get_title(self, main_window, file_path, key, check_path_func=None):
-        '''
-        a typical path: dataset(folder)/method1(key)/xx.png 
-        '''
-        # create new title
-        # print('get title', file_path)
-        dataset = self.fdir.split(os.sep)[0]
-        title_str = '\n'.join([dataset, key[:15], os.path.basename(file_path).split('.')[0]])
+        label = QLabel()
+        label.setMovie(gif_obj)
+
+        self.item = QGraphicsProxyWidget()
+        self.item.setWidget(label)
+        label.show()
+
+        self.view.scene().addItem(self.item)
+        gif_obj.start()
+        frame_size = gif_obj.currentImage()
+        print('GIF size', frame_size.width(), frame_size.height())
+        self.set_size(frame_size.width(), frame_size.height())
+        # self.set_size(1024, 512)
+
+class QImageObj(AbstractMedia):
+    def _load(self):
+        assert self.path.endswith(windowConfig.SUPPORTED_FILES['image']), f'Only support .jpg, .jpeg or .png for image file, but got {self.path}'
+
+        obj = load_image_obj(self.path, self.bytes)
+        self.set_size(obj.width(), obj.height())
+        self.item = obj
+        self.view.scene().addPixmap(self.item)
+
+class QMediaObj:
+    def __init__(self, path, bytes=None, fdir=None, view=None):
+        assert os.path.exists(path) or bytes
+
+        self.fdir = fdir # 1st level folder
+        supported_types = windowConfig.SUPPORTED_FILES
+
+        if path.endswith('gif'):
+            self.obj = QGifObj(path, bytes, view)
+        elif path.endswith(supported_types['video']):
+            self.obj = QVideoObj(path, bytes, view)
+        elif path.endswith(supported_types['image']):
+            self.obj = QImageObj(path, bytes, view)
+        else:
+            raise NotImplementedError(f'Only support {supported_types.keys()}, but got {path}')
         
-        check_path_func = os.path.exists if check_path_func is None else check_path_func
-        if not check_path_func(file_path):
-            title_str += f'\nDoes not exist :('
-        else:
-            title_str += f' ({main_window.currentIndex})'
-        qText = QGraphicsTextItem(title_str)
-        qText.setDefaultTextColor(Qt.red)
-        if key in main_window.titles:
-            qText.setScale(main_window.titles[key].scale())
-            qText.setPos(main_window.titles[key].pos())
-        else:
-            qText.setScale(1.3)
-        main_window.titles[key] = qText
-        # view.scene().addItem(qText)
-        return qText
+        self.obj.load_media()
+        for attr, value in self.obj.__dict__.items():
+            setattr(self, attr, value)
 
-    def __del__(self):
-        del self.item
+    def show_in_view(self, qText):
+        # qText = getQTitle(main_window, fpath, key)
+        self.view.scene().addItem(qText)
+        self.view.show()
 
-def saveMediaBytes(path, file_bytes, fdir):
-    '''Save media bytes to local path.'''
-    os.makedirs(fdir, exist_ok=True)
-    with open(path, 'wb') as f:
-        f.write(file_bytes)
 
-def requestQMedia(path, file_bytes=None, fdir=None):
-    '''Request media object from local or remote. Support image and video media reading.'''
-    # print(path, file_bytes)
-    qMedia = QMediaObj(path, file_bytes, fdir)
-    if path.endswith('.mp4'):
-        qMedia.load_video()
-    elif path.endswith(('.jpg', '.png', '.jpeg')):
-        qMedia.load_image()
+def getQTitle(main_window, file_path, key, check_path_func=None):
+    '''
+    a typical path: dataset(folder)/method1(key)/xx.png 
+    '''
+    if windowConfig.DEBUG:
+        print('QMediaObj get title', file_path)
+    # create new title
+    # dataset = self.fdir.split(os.sep)[0]
+    dataset = ''
+    title_str = '\n'.join([dataset, key[:15], os.path.basename(file_path).split('.')[0]])
+    
+    check_path_func = os.path.exists if check_path_func is None else check_path_func
+    if not check_path_func(file_path):
+        title_str += f'\nDoes not exist :('
     else:
-        raise NotImplementedError(f'Only support .jpg, .jpeg, .png or .mp4 for image or video file, but got {path}')
-    return qMedia
-    
-    
+        title_str += f' ({main_window.currentIndex})'
+    qText = QGraphicsTextItem(title_str)
+    qText.setDefaultTextColor(Qt.red)
+    if key in main_window.titles:
+        # print(key, main_window.titles.keys(), qText.scale())
+        qText.setScale(main_window.titles[key].scale())
+        qText.setPos(main_window.titles[key].pos())
+    else:
+        qText.setScale(1.3)
+    qText.setParentItem(None)
+    main_window.titles[key] = qText
+    # view.scene().addItem(qText)
+    return qText

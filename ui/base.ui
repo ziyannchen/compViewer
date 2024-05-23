@@ -101,6 +101,11 @@
     <string>Window</string>
    </property>
   </action>
+  <action name="actionConnect">
+   <property name="text">
+    <string>connect</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

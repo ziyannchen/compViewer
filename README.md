@@ -1,6 +1,6 @@
 # compViewer
 > compViewer – An utility to effortlessly navigate and compare multiple media windows, e.g. multiple baselines. \
-compViewer - 一个提供**多个不同baseline**进行方便地网格状浏览的工具。
+compViewer - 一个提供**多个不同baselines**进行方便地网格状浏览的工具，支持放大缩小，切换不同组图片。
 
 Tech stack:
 - PyQt5 (for UI)
@@ -29,7 +29,7 @@ Tech stack:
 
     p.s. 可以只填写IMG_SIZE_W，这个大小最好按照图片实际的宽来填写，因为该大小会影响grid中显示的图像分辨率。
 
-- ssh远程服务器设置`ssh.yaml`
+> 这里grid大小和图像大小不一样，grid会自动随着整个程序框的大小来调整；但图像缩放的时候会有损，所以默认原图大小更好。
 
 ### 打开/删除文件夹
 菜单File
@@ -50,6 +50,8 @@ lfw_face
     ├── 1.png
     └── 2.mp4
 ```
+>最好能保证所有baseline文件夹中的文件名称及后缀都是一致的，这样不容易出错。
+目前支持的文件类型：['jpg', 'jpeg', 'png', 'bmp'],['mp4', 'avi', 'mov', 'gif'].
 
 - **Add folder**：选中一个父文件夹，将同时load所有的子文件夹。
 默认显示第一张。
@@ -59,9 +61,11 @@ lfw_face
 ### 图片操作
 
 - **图片缩放**：鼠标向上 / 下滚动
-(支持所有图片同时缩放、移动：在非窗口区域操作鼠标)
 
-- **图像局部区域移动**：鼠标左键点击+移动
+- **图像区域拖动**：鼠标左键点击+拖动
+
+> 1) 在非图像区域操作：所有图片同时缩放、拖动；
+> 2) 在单个图像区域操作：单个图像缩放、拖动。
 
 - **图片切换**
     - **上一张**：键盘A / 键盘W
@@ -72,17 +76,37 @@ lfw_face
 - **by Index**：load进来的所有图片先按照名字进行排序(natsorted)，index为排序后的index
 - **by Name**: 模糊查找，跳转到第一个满足条件的
 
-### 远程服务器访问
-在ssh.yaml的test_host1配置你的服务器信息，出于安全考虑，目前仅支持公钥访问。
+### 保存
+- 保存当前组图像到指定文件夹，用于写论文找图一键拿到多个baseline的图。
 
-连接成功后在挑出来的对话框中的textEdit输入你想要对比的文件夹路径(用英文分号;分割)，将自动加载显示。
+### 远程服务器访问
+- 服务器信息配置：vscode的ssh连接类似，自动加载`~/.ssh/config`路径的服务器设置。
+- 登陆验证：目前仅支持公钥验证模式，默认加载`~/.ssh/id_rsa`私钥信息。
+
+- 远程文件夹加载：连接成功后在跳出来的对话框中输入你想要对比的服务器文件夹路径(用英文分号`;`分割)，将自动加载显示并缓存到本地文件夹。
 
 
 #### Special Features
-- Local cache：在请求远程资源显示到窗口中时，将自动缓存到本地ssh.yaml中配置的CacheDir，来节约ssh传输带来的开销。
+- Local cache：在请求远程资源显示到窗口中时，将自动缓存到本地ssh.yaml中配置的CacheDir(默认是项目文件夹下的./.cache)，来节约ssh传输带来的开销。
 
 #### 可能的异常
 目前可能因为多文件远程传输，会存在一些小问题，但不妨碍正常的浏览。
-- 加载卡顿 If you feel an obvious pause when shifting to another view, it's most probably from the remote ssh file-loading costs, which usually takes 1s for each video.
+- 加载卡顿 If you feel an obvious pause when shifting to another view, it's most probably from costs of the remote ssh file-loading and cacing, which usually takes about 1s for a 512*512 video.
 
 - 空白的媒体窗口视图 If you encounter empty unit media window view(s) but not due to missing media source, try switching to another view and back to check if it's normal (Bug not found currenlt).
+
+
+# Development-related
+
+## pyqt ui designer
+```shell
+# pyqt designer
+designer
+
+# compile ui file
+pyuic5 -o ui/base.py ui/base.ui
+```
+
+<!-- ```
+pyinstaller -F ui/main.py
+``` -->

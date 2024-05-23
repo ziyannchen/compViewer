@@ -15,3 +15,11 @@ X_NUM: 3 # 一行显示多少张图片/视频
 # 每个图片的大小 h=auto: 根据长宽比例自动计算
 IMG_SIZE_W: 512
 IMG_SIZE_H: auto
+
+SUPPORTED_FILES: {
+  'image': ['jpg', 'jpeg', 'png', 'bmp'],
+  'video': ['mp4', 'avi', 'mov', 'gif']
+}
+# CACHE_DIR: '~/.cache/compViewer/remote/'
+CACHE_DIR: './.cache/remote/'
+DEBUG: true
