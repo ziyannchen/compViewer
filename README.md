@@ -1,11 +1,11 @@
 # compViewer
-> compViewer – An utility to effortlessly navigate and compare multiple media windows, e.g. multiple baselines. \
-compViewer - 提供**多个不同baselines**进行方便地网格状浏览的工具，支持放大缩小，切换不同组图片。
-> 1. Easyuser study.
+An utility to navigate and compare multiple media windows, e.g. multiple baselines. \
+提供**多个不同baselines**进行方便地网格状浏览的工具，支持放大缩小，视图组切换。
 
-Tech stack:
-- PyQt5 (for UI)
-- paramiko (for remote access)
+
+> Application scenes 1) user study, 2) paper image selection, 3) expriment image checking.
+
+<img src="figs/demo.png"></img>
 
 ## Features
 
@@ -22,6 +22,11 @@ Tech stack:
     - 保存当前视图所有图片到单个文件夹
 
 ## Instructions
+### Run
+```python
+python main.py
+```
+
 ### 基本设置
 
 在`config`下的.yaml文件中填写等基础设置。
@@ -98,6 +103,10 @@ lfw_face
 
 
 # Development-related
+
+## Tech stack:
+- PyQt5
+- paramiko
 
 ## pyqt ui designer
 ```shell

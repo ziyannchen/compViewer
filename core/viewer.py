@@ -198,9 +198,9 @@ class ViewerApp(QMainWindow, MainWindowUI):
         EventHandler.mouseMoveEvent(self, event)
     
     def resizeEvent(self, event):
-        # super(ViewerApp, self).resizeEvent(event)
-        # self.windowCfg.X_NUM = windowConfig.X_NUM # reset x_num
-        windowConfig.X_NUM = 'auto' if self.view_adjusted else windowConfig.X_NUM
+        super(ViewerApp, self).resizeEvent(event)
+        windowConfig.X_NUM = windowConfig.X_NUM # reset x_num
+        # windowConfig.X_NUM = 'auto'
         # readjust view grid when the app window resized
         self.view_adjusted = False
         self.update()
