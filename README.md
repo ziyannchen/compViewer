@@ -1,6 +1,7 @@
 # compViewer
 > compViewer – An utility to effortlessly navigate and compare multiple media windows, e.g. multiple baselines. \
-compViewer - 一个提供**多个不同baselines**进行方便地网格状浏览的工具，支持放大缩小，切换不同组图片。
+compViewer - 提供**多个不同baselines**进行方便地网格状浏览的工具，支持放大缩小，切换不同组图片。
+> 1. Easyuser study.
 
 Tech stack:
 - PyQt5 (for UI)

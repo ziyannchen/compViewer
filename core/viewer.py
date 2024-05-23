@@ -200,7 +200,7 @@ class ViewerApp(QMainWindow, MainWindowUI):
     def resizeEvent(self, event):
         # super(ViewerApp, self).resizeEvent(event)
         # self.windowCfg.X_NUM = windowConfig.X_NUM # reset x_num
-        windowConfig.X_NUM = 'auto'
+        windowConfig.X_NUM = 'auto' if self.view_adjusted else windowConfig.X_NUM
         # readjust view grid when the app window resized
         self.view_adjusted = False
         self.update()
