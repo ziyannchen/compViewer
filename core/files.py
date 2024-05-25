@@ -75,9 +75,9 @@ class fileHandler:
             # self.createGraphicsView(base_key)
             
             tmp_files = scan_func(folder=self.folderPaths[base_key], suffix=SUPPORTED_FILES, full_path=False)
-            if windowConfig.DEBUG:
-                print(f'Indexing from base key ', base_key)
-                print(f'Folder {folder} loaded, {len(tmp_files)} files found')
+
+            print(f'Indexing from base key ', base_key)
+            print(f'Folder {folder} loaded, {len(tmp_files)} files found')
 
         self.set_imageFilenames(tmp_files)
         return len(tmp_files), base_key

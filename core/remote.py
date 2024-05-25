@@ -1,8 +1,9 @@
 import os
 import paramiko
+from config import windowConfig
 
-DEFAULT_SSH_CONFIG_PATH = '~/.ssh/config'
-DEFAULT_KEY_PATH = '~/.ssh/id_rsa'
+DEFAULT_SSH_CONFIG_PATH = windowConfig.SSH_CONFIG_PATH
+DEFAULT_KEY_PATH = windowConfig.KEY_PATH
 
 def load_ssh_config(ssh_cfg_path=DEFAULT_SSH_CONFIG_PATH):
     config_path = os.path.expanduser(ssh_cfg_path)

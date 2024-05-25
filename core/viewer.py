@@ -9,7 +9,7 @@ from utils.file import fuzzy_search_list
 from config import windowConfig
 
 from core.view import adjustGraphicsView
-from core.dialogs import EditDialog, ListDialog
+from core.dialogs import EditDialog, ListDialog, EditableListDialog
 from core.media import QMediaObj, getQTitle
 from core.files import fileHandler, load_file_bytes
 from core.remote import get_all_hostnames, create_ssh_client
@@ -99,10 +99,11 @@ class ViewerApp(QMainWindow, MainWindowUI):
         # TODO: log in assigned host
         self.actionOpenRemote.triggered.connect(lambda: self.connectRemote())
 
+        self.actionConfigWindow.triggered.connect(self.configWindow)
+
         self.actionGoTo.triggered.connect(self.actionGoToTriggered)
         self.actionGoToName.triggered.connect(lambda: self.actionGoToTriggered(by_name=True))
         
-
     def update(self):
         if self.currentIndex == -1:
             print('No media loaded')
@@ -180,6 +181,16 @@ class ViewerApp(QMainWindow, MainWindowUI):
             if ssh_flag:
                 # print(self.ssh_client)
                 self.loadSSHFolders()
+
+    def configWindow(self):
+        dialog = EditableListDialog(windowConfig)
+        print(windowConfig)
+        if dialog.exec_() == QDialog.Accepted:
+            edited_values = dialog.get_edited_values()
+            windowConfig.set(edited_values)
+            self.view_adjusted = False
+            print("Edited Values:", edited_values, windowConfig)
+            self.update()
 
     def keyPressEvent(self, event):
         EventHandler.keyPressedEvent(self, event)

@@ -27,7 +27,7 @@ def captureView(view, remove_item=None):
         view.scene().addItem(remove_item)
     return pixmap
 
-def adjustGraphicsView(self, idx, media_w, media_h):
+def adjustGraphicsView(self, idx=-1, media_w=None, media_h=None):
     '''Adjust QGraphicsView geometry in the main window to build media view grids.
     Args:
         idx: specify the index of the graphicsViews list. 
@@ -37,21 +37,29 @@ def adjustGraphicsView(self, idx, media_w, media_h):
     TODO: the computation of x_num, vsize need to be optimized.
     '''
     # assert media_h and media_w, 'media size should not be zero nor None'
-    if windowConfig.DEBUG:
+    if not hasattr(windowConfig, 'media_w'.upper()):
+        assert media_h and media_w, 'media size should not be zero nor None'
         print('Adjusting view... Media size (w, h)', media_w, media_h)
-    if not media_w or not media_h:
-        return
+        windowConfig.__setattr__('media_w'.upper(), media_w)
+        windowConfig.__setattr__('media_h'.upper(), media_h)
 
-    border = windowConfig.BORDER
-    x_margin, y_margin = windowConfig.MARGIN_W, windowConfig.MARGIN_H
+    if media_h is None:
+        media_h = int(windowConfig.MEDIA_H)
+        
+    if media_w is None:
+        media_w = int(windowConfig.MEDIA_W)
+
+    border = int(windowConfig.BORDER)
+    x_margin, y_margin = int(windowConfig.MARGIN_W), int(windowConfig.MARGIN_H)
     screen_w, screen_h = self.size().width(), self.size().height() # app window size
     vsize_w, vsize_h = media_w, media_h # view size, default to media size
+
     # 获取主屏幕长宽
     # screen = QDesktopWidget().screenGeometry()
     # screen_w, screen_h = screen.width(), screen.height()
-    x_num = windowConfig.X_NUM
+    x_num = int(windowConfig.X_NUM)
     media_num = len(self.folderPaths.keys())
-    print(media_num)
+    # print(media_num)
     if x_num == 'auto':
         # 预设的media面积远大于屏幕面积，需要调整view的缩放比例
         v_scale = max(1, media_num*media_h*media_w // (screen_w*screen_h) - 1)
@@ -69,14 +77,19 @@ def adjustGraphicsView(self, idx, media_w, media_h):
         vsize_w = (media_w / media_h) * vsize_h # keep the aspect ratio
     # print('vsize_w adjusted', vsize_w, 'vsize_h adjusted', vsize_h)
     
+    if idx == -1:
+        # adjust all views
+        for idx in range(media_num):
+            adjustGraphicsView(self, idx, vsize_w, vsize_h)
+        return
+    
     x_crt = idx % (x_num)
     y_crt = idx // (x_num)
     x = x_margin + x_crt * (vsize_w + border)
     y = y_margin + y_crt * (vsize_h + border)
     list(self.graphicsViews.values())[idx].setGeometry(x, y, vsize_w, vsize_h)
 
-    if windowConfig.DEBUG:
-        print('view pos', x, y, vsize_w, vsize_h)
+    # print('view pos', x, y, vsize_w, vsize_h)
 
 class DynamicGridView:
     def __init__(self, main_widget, file_handler):

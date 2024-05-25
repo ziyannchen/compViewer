@@ -39,7 +39,7 @@
     <property name="title">
      <string>Configs</string>
     </property>
-    <addaction name="actionWindow"/>
+    <addaction name="actionConfigWindow"/>
     <addaction name="separator"/>
     <addaction name="actionConfigSSH"/>
    </widget>
@@ -96,7 +96,7 @@
     <string>SSH</string>
    </property>
   </action>
-  <action name="actionWindow">
+  <action name="actionConfigWindow">
    <property name="text">
     <string>Window</string>
    </property>

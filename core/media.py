@@ -97,7 +97,6 @@ class QVideoObj(AbstractMedia):
 class QGifObj(AbstractMedia):
     def _load(self):
         gif_obj = load_gif_obj(self.path)
-        
 
         label = QLabel()
         label.setMovie(gif_obj)
@@ -109,9 +108,8 @@ class QGifObj(AbstractMedia):
         self.view.scene().addItem(self.item)
         gif_obj.start()
         frame_size = gif_obj.currentImage()
-        print('GIF size', frame_size.width(), frame_size.height())
+        # print('GIF size', frame_size.width(), frame_size.height())
         self.set_size(frame_size.width(), frame_size.height())
-        # self.set_size(1024, 512)
 
 class QImageObj(AbstractMedia):
     def _load(self):
@@ -152,8 +150,8 @@ def getQTitle(main_window, file_path, key, check_path_func=None):
     '''
     a typical path: dataset(folder)/method1(key)/xx.png 
     '''
-    if windowConfig.DEBUG:
-        print('QMediaObj get title', file_path)
+    
+    print('QMediaObj get title', file_path)
     # create new title
     # dataset = self.fdir.split(os.sep)[0]
     dataset = ''

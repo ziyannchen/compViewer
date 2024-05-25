@@ -4,17 +4,20 @@ MARGIN_W: 10
 
 # Media grid
 BORDER: 5 # 定义每个图片窗口之间的间隔距离
-X_NUM: 4 # 一行显示多少张图片/视频
+X_NUM: 1 # 一行显示多少张图片/视频
 
 # Media window
 # 每个图片的大小 h=auto: 根据长宽比例自动计算
-IMG_SIZE_W: 512
+IMG_SIZE_W: 1024
 IMG_SIZE_H: auto
 
 SUPPORTED_FILES: {
   'image': ['jpg', 'jpeg', 'png', 'bmp'],
   'video': ['mp4', 'avi', 'mov', 'gif']
 }
-# CACHE_DIR: '~/.cache/compViewer/remote/'
-CACHE_DIR: './.cache/remote/'
-DEBUG: true
+
+# remote related
+CACHE_DIR: ./.cache/remote/
+SSH_CONFIG_PATH: ~/.ssh/config
+KEY_PATH: ~/.ssh/id_rsa
+# DEBUG: true
