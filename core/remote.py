@@ -4,6 +4,8 @@ from config import windowConfig
 
 DEFAULT_SSH_CONFIG_PATH = windowConfig.SSH_CONFIG_PATH
 DEFAULT_KEY_PATH = windowConfig.KEY_PATH
+# REMOTE_SIGN = '#-REMOTE-#:'
+REMOTE_SIGN = ''
 
 def load_ssh_config(ssh_cfg_path=DEFAULT_SSH_CONFIG_PATH):
     config_path = os.path.expanduser(ssh_cfg_path)
@@ -64,6 +66,10 @@ class SSHConnection(object):
             sock=proxy,
             pkey=private_key
         )
+        # keep alive
+        transport = client.get_transport()
+        transport.set_keepalive(20) # send keepalive packet every 60 seconds
+
         self.client = client
         print(f'Connected to', self.host, '...')
     
@@ -107,15 +113,16 @@ class SSHConnection(object):
         file_list = sorted([s.strip() for s in file_list if s.strip()])
 
         if full_path:
-            return file_list
+            return [REMOTE_SIGN+f for f in file_list]
         
         # return [os.path.basename(f) for f in file_list]
         print(file_list)
         # relative path
-        return [os.path.relpath(f, folder) for f in file_list]
+        return [REMOTE_SIGN+os.path.relpath(f, folder) for f in file_list]
 
     def __del__(self):
-        self.client.close()
+        if hasattr(self, 'client'):
+            self.client.close()
 
 def create_ssh_client(hostname, ssh_config=None):
     host_config = get_ssh_config(hostname, ssh_config)

@@ -9,4 +9,6 @@ pyqt5
 # for ssh
 pyyaml
 paramiko
-# ssh-config
+
+# for packaging
+# pyinstaller

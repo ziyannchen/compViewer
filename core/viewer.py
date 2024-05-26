@@ -11,13 +11,13 @@ from config import windowConfig
 from core.view import adjustGraphicsView
 from core.dialogs import EditDialog, ListDialog, EditableListDialog
 from core.media import QMediaObj, getQTitle
-from core.files import fileHandler, load_file_bytes
+from core.files import fileHandler
 from core.remote import get_all_hostnames, create_ssh_client
 from core.events import EventHandler
 from core.view import DynamicGridView
 
 
-class ViewerApp(QMainWindow, MainWindowUI):
+class ViewerApp(QMainWindow, MainWindowUI, EventHandler):
     def __init__(self):
         super(ViewerApp, self).__init__()
         # for time-consumption debug
@@ -95,12 +95,14 @@ class ViewerApp(QMainWindow, MainWindowUI):
         # TODO: del assigned dir
         self.actionDel1Folder.triggered.connect(lambda: self.view.delete())
         self.actionSave.triggered.connect(lambda: self.view.save())
+        self.actionSaveCrop.triggered.connect(lambda: self.view.save(scaled=True))
         # self.actionSave.triggered.connect(self.save)
-        # TODO: log in assigned host
         self.actionOpenRemote.triggered.connect(lambda: self.connectRemote())
 
+        # config
         self.actionConfigWindow.triggered.connect(self.configWindow)
 
+        # action
         self.actionGoTo.triggered.connect(self.actionGoToTriggered)
         self.actionGoToName.triggered.connect(lambda: self.actionGoToTriggered(by_name=True))
         
@@ -110,10 +112,9 @@ class ViewerApp(QMainWindow, MainWindowUI):
             return 
         # self.profiler.enable()
         for idx, (key, view) in enumerate(self.graphicsViews.items()):
-            paths = self.folderPaths[key].split(os.sep)
-            
             # add media obj
-            fpath, file_bytes = load_file_bytes(self, paths, key)
+            fpath, file_bytes = self.file_handler.loadFileBytes(key)
+            
             # print(file_bytes, fpath, fpath_local, relative_fdir)
             qTitle = getQTitle(self, fpath, key)
             qMedia = QMediaObj(fpath, bytes=file_bytes, fdir='', view=view)
@@ -128,16 +129,11 @@ class ViewerApp(QMainWindow, MainWindowUI):
     def loadAllSubFolders(self):
         self.initApp() # init app window
         folders = self.file_handler.getAllSubFolders()
-        # folders = ['/Users/celine/Desktop/VideoLM/exps/codeformer/comp/val_out', 
-        #            '/Users/celine/Desktop/VideoLM/exps/codeformer/comp/visualization/90000',
-        #            '/Users/celine/Desktop/VideoLM/exps/codeformer/comp/visualization/20000'
-        #            ]
         for folder in folders:
             self.addFolder(folder, update=False)
         self.update()
 
     def addFolder(self, folder=None, update=True, **kargs):
-        # folder = '/Users/celine/Desktop/VideoLM/exps/codeformer/0520/1'
         file_num, base_key = self.file_handler.addFolder(folder, **kargs)
         print('file_num', file_num, 'base_key', base_key, file_num)
        
@@ -182,6 +178,29 @@ class ViewerApp(QMainWindow, MainWindowUI):
                 # print(self.ssh_client)
                 self.loadSSHFolders()
 
+    def actionGoToTriggered(self, by_name=False):
+        label = 'Name' if by_name else 'Index'
+        dialog = EditDialog(title='GoTo', label=label)
+        result = dialog.exec_()
+        if result == QDialog.Accepted:
+            input_text = dialog.get_input_text()
+            if input_text == '':
+                return 
+            # print("Input Text:", input_text)
+            if label == 'Name':
+                index = fuzzy_search_list(input_text, self.imageFilenames)
+                if index == -1:
+                    QMessageBox.critical(self, "Name Not found", f'No filename includes \'{input_text}\'!')
+                    return
+            else:
+                index = int(input_text)
+                #TODO: check int
+                if index > len(self.imageFilenames) - 1 or index < 0:
+                    QMessageBox.critical(f'Invalid Index {index}!')
+                    return 
+            self.currentIndex = index
+            self.update()
+
     def configWindow(self):
         dialog = EditableListDialog(windowConfig)
         print(windowConfig)
@@ -215,26 +234,5 @@ class ViewerApp(QMainWindow, MainWindowUI):
         # readjust view grid when the app window resized
         self.view_adjusted = False
         self.update()
-
-    def actionGoToTriggered(self, by_name=False):
-        label = 'Name' if by_name else 'Index'
-        dialog = EditDialog(title='GoTo', label=label)
-        result = dialog.exec_()
-        if result == QDialog.Accepted:
-            input_text = dialog.get_input_text()
-            # print("Input Text:", input_text)
-            if label == 'Name':
-                index = fuzzy_search_list(input_text, self.imageFilenames)
-                if index == -1:
-                    QMessageBox.critical(self, "Name Not found", f'No filename includes \'{input_text}\'!')
-                    return
-            else:
-                index = int(input_text)
-                #TODO: check int
-                if index > len(self.imageFilenames) - 1 or index < 0:
-                    QMessageBox.critical(f'Invalid Index {index}!')
-                    return 
-            self.currentIndex = index
-            self.update()
         
         

@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from utils.file import copy_file, scan_dir
 from config import windowConfig
 from core.view import captureView
+# from core.remote import REMOTE_SIGN
 
 SUPPORTED_FILES = sum(windowConfig.SUPPORTED_FILES.values(), ())
 
@@ -21,6 +22,10 @@ class fileHandler:
 
         self.imageFilenames = None
         self.titles = {}
+
+    @property
+    def ssh_client(self):
+        return self.main_window.ssh_client
     
     def set_imageFilenames(self, value):
         if self.imageFilenames is None:
@@ -61,13 +66,13 @@ class fileHandler:
         #         base_key = os.path.join(os.path.basename(pfolder), base_key)
         #         return check_key(base_key, pfolder)
         #     return base_key
-        print(folder, os.path.isdir(folder))
+        print('loadFolder', folder, os.path.isdir(folder))
         tmp_files = []
         base_key = None
         if check_dir(folder):
             base_key = os.path.basename(folder)
             # base_key = check_key(base_key, folder)
-            print(base_key, self.folderPaths.keys(), base_key in self.folderPaths.keys())
+            print('loadFolder', base_key, self.folderPaths.keys(), folder, base_key in self.folderPaths.keys())
             if base_key in self.folderPaths.keys():
                 print(f'Folder {folder} already loaded')
                 return -1, base_key
@@ -112,19 +117,67 @@ class fileHandler:
         save_dir = os.path.join(save_dir, f'{index}_{imgname}')
         os.makedirs(save_dir, exist_ok=True)
         
-        message_info = ['Info', 'Saved susccessfully']
+        message_info = ['Info', f'Saved susccessfully to {save_dir}']
         for key, view in graphicsViews.items():
-            img_path = os.path.join(self.folderPaths[key], imgname+ext)
+            source_folder = self.folderPaths[key]
+            if self.ssh_client is not None and not os.path.exists(source_folder):
+                source_folder = os.path.join(windowConfig.CACHE_DIR, self.get_relative_fdir(key))
+            
+            img_path = os.path.join(source_folder, imgname+ext)
             target_path = os.path.join(save_dir, f'{key}{ext}')
             if scale_view:
-                captureView(view, remove_item=self.titles[key]).save(target_path)
-                print('Saved ', target_path)
+                captureView(view, img_path, target_path, remove_item=self.titles[key])
+                print('Saved crops in ', target_path)
             else:
                 if not copy_file(target_path, img_path):
                     print(f'Copy {img_path} failed')
                     message_info[0] = 'Error'
                     message_info[1] = f'Copy {img_path} failed\n'
+                    QMessageBox.critical(self.main_window, *message_info)
+                    return 
         QMessageBox.information(self.main_window, *message_info)
+
+    def get_relative_fdir(self, key):
+        paths = self.folderPaths[key].split(os.sep)
+        return os.path.join(paths[-3], paths[-2], key)
+
+    def loadFileBytes(self, key):
+        '''
+        load file from local directory or remote.
+            if load from remote, cache in local temp file for fast access.
+        '''
+        filename = self.imageFilenames[self.main_window.currentIndex]
+        relative_fdir = self.get_relative_fdir(key)
+        
+        fpath = os.path.join(self.folderPaths[key], filename)
+        print(fpath)
+        if os.path.exists(fpath):
+            file_bytes = read_bytes(fpath)
+        elif self.ssh_client is not None:
+            # read remote media file bytes, and cache to local dirs automatically
+            # TODO: currently cache video only.
+            # TODO: support HASH to update local file
+            # FIXME: media file cleared for unknown reason
+            fdir_local = os.path.join(windowConfig.CACHE_DIR, relative_fdir)
+            fpath_local = os.path.join(fdir_local, filename)
+            if not os.path.exists(fpath_local):
+                try:
+                    print('Reading from remote path', fpath)
+                    file_bytes = self.ssh_client.get_remote_file_content(fpath) # file bytes
+                    cache_bytes(fpath_local, file_bytes)
+                except Exception as e:
+                    print(e)
+                    QMessageBox.critical(self.main_window, "Remote Error ", f'{e}!')
+                    return None, None
+            else:
+                file_bytes = read_bytes(fpath)
+            # replace with local sign to avoid repeated remote access
+            fpath = fpath_local
+            # self.folderPaths[key] = fdir_local
+        else:
+            raise FileNotFoundError(f'File {fpath} does not exist')
+            
+        return fpath, file_bytes
 
 def cache_bytes(path, file_bytes, verbose=True):
     '''Save media bytes to local path.'''
@@ -145,37 +198,3 @@ def read_bytes(path, verbose=True):
         print('Loading file bytes from', path)
     with open(path, 'rb') as f:
         return f.read()
-    
-def load_file_bytes(self, paths, key):
-    '''
-    load file from local directory or remote.
-        if load from remote, cache in local temp file for fast access.
-    '''
-    
-    filename = self.imageFilenames[self.currentIndex]
-    relative_fdir = os.path.join(paths[-3], paths[-2], key)
-    fpath = os.path.join(self.folderPaths[key], filename)
-
-    if self.ssh_client is not None:
-        # read remote media file bytes, and cache to local dirs automatically
-        # TODO: currently cache video only.
-        # TODO: support HASH to update local file
-        # FIXME: media file cleared for unknown reason
-        fpath_local = os.path.join(windowConfig.CACHE_DIR, relative_fdir, filename)
-        if not os.path.exists(fpath_local):
-            try:
-                print('Reading from remote path', fpath)
-                file_bytes = self.ssh_client.get_remote_file_content(fpath) # file bytes
-                cache_bytes(fpath_local, file_bytes)
-            except Exception as e:
-                print(e)
-                QMessageBox.critical(self, "Remote Error ", f'{e}!')
-                return
-        else:
-            file_bytes = read_bytes(fpath)
-        # replace with local sign to avoid repeated remote access
-        fpath = fpath_local
-    else:
-        file_bytes = read_bytes(fpath)
-        
-    return fpath, file_bytes

@@ -56,8 +56,10 @@ lfw_face
     ├── 1.png
     └── 2.mp4
 ```
->最好能保证所有baseline文件夹中的文件名称及后缀都是一致的，这样不容易出错。
+> 最好能保证所有baseline文件夹中的文件名称及后缀都是一致的，这样不容易出错。
 目前支持的文件类型：['jpg', 'jpeg', 'png', 'bmp'],['mp4', 'avi', 'mov', 'gif'].
+
+> 目前靠文件夹最后一级名称来区分不同的baseline，因此需要保证不同的baseline的路径最后一级的名字不同。
 
 - **Add folder**：选中一个父文件夹，将同时load所有的子文件夹。
 默认显示第一张。
@@ -104,9 +106,19 @@ lfw_face
 
 # Development-related
 
-## Tech stack:
-- PyQt5
-- paramiko
+## build
+### .exe
+```shell
+pyinstaller --onefile --windowed main.py
+```
+
+### .dmg
+```shell
+pyinstaller --onefile --windowed main.py
+cd dist
+hdiutil create -volname compViewer -srcfolder main.app -ov -format UDZO compViewer.dmg
+```
+
 
 ## pyqt ui designer
 ```shell
@@ -116,6 +128,10 @@ designer
 # compile ui file
 pyuic5 -o ui/base.py ui/base.ui
 ```
+
+## Tech stack:
+- PyQt5
+- paramiko
 
 <!-- ```
 pyinstaller -F ui/main.py

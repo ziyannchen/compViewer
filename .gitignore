@@ -2,3 +2,6 @@
 **/__pycache__
 /tmp
 /.cache
+/build
+/dist
+**/*.spec

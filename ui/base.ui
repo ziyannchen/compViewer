@@ -32,6 +32,7 @@
     <addaction name="actionDel1Folder"/>
     <addaction name="separator"/>
     <addaction name="actionSave"/>
+    <addaction name="actionSaveCrop"/>
     <addaction name="separator"/>
     <addaction name="actionOpenRemote"/>
    </widget>
@@ -40,8 +41,6 @@
      <string>Configs</string>
     </property>
     <addaction name="actionConfigWindow"/>
-    <addaction name="separator"/>
-    <addaction name="actionConfigSSH"/>
    </widget>
    <widget class="QMenu" name="menuAction">
     <property name="title">
@@ -63,12 +62,12 @@
   </action>
   <action name="actionAdd1Folder">
    <property name="text">
-    <string>+ Add 1Folder</string>
+    <string>+ Add 1 folder</string>
    </property>
   </action>
   <action name="actionDel1Folder">
    <property name="text">
-    <string>- Del 1Folder</string>
+    <string>- Del 1 folder</string>
    </property>
   </action>
   <action name="actionSave">
@@ -104,6 +103,11 @@
   <action name="actionConnect">
    <property name="text">
     <string>connect</string>
+   </property>
+  </action>
+  <action name="actionSaveCrop">
+   <property name="text">
+    <string>Save crop...</string>
    </property>
   </action>
  </widget>

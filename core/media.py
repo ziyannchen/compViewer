@@ -127,7 +127,7 @@ class QMediaObj:
         self.fdir = fdir # 1st level folder
         supported_types = windowConfig.SUPPORTED_FILES
 
-        if path.endswith('gif'):
+        if path.endswith('.gif'):
             self.obj = QGifObj(path, bytes, view)
         elif path.endswith(supported_types['video']):
             self.obj = QVideoObj(path, bytes, view)

@@ -38,7 +38,6 @@ class EventHandler:
                 targetPos = view.mapToScene(0, 0)  # 视图左上角的场景坐标
                 title_item.setPos(targetPos)  # 吸附到目标位置
 
-
     @staticmethod
     def wheelEvent(self, event) -> None:
         for key in self.graphicsViews.keys():

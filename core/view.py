@@ -1,31 +1,82 @@
 import math
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QDialog
+import os
+from copy import deepcopy
+import imageio
+
+from PyQt5 import QtGui, QtCore
+from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QFileDialog, QDialog, QMessageBox
 from PyQt5.QtCore import QDir, Qt
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 from config import windowConfig
+from utils.geometry import transform_gif
 
-def captureView(view, remove_item=None):
+def captureView(view, img_path=None, save_path=None, remove_item=None):
     if remove_item is not None:
-        # temporarily remove the item from the view
         view.scene().removeItem(remove_item)
-    # 获取视图的矩形区域
+
+    if save_path.endswith(windowConfig.SUPPORTED_FILES['image']):
+        cropView(view).save(save_path)
+    elif save_path.endswith('.gif'):
+        cropGIF(view, img_path, save_path)
+    else:
+        QMessageBox.warning(None, 'Unsupported file format', f'Currently not support to crop {os.path.splitext(save_path)[-1]} file format')
+
+    if remove_item is not None:
+        view.scene().addItem(remove_item)
+
+def cropGIF(view, gif_path, save_path):
+    q_transform = view.transform()
+
+    # Extract the matrix elements from QTransform
+    sx, sy = q_transform.m11(), q_transform.m22()
+    dx, dy = view.horizontalScrollBar().value(), view.verticalScrollBar().value()
+
+    # 获取视图的可视区域
+    viewport_rect = view.rect()
+    width = viewport_rect.width() - 20
+    height = viewport_rect.height() - 20
+    transform_gif(gif_path, save_path, (width, height, dx, dy, sx, sy))
+
+def cropView(view):
     view_rect = view.viewport().rect()
 
-    # 创建一个空的QPixmap
+    # create QPixmap
     pixmap = QtGui.QPixmap(view_rect.size())
     pixmap.fill(Qt.transparent)
 
-    # 使用QPainter将视图内容绘制到pixmap上
+    # QPainter pixmap
     painter = QtGui.QPainter(pixmap)
     view.render(painter, source=view_rect)
     painter.end()
-
-    if remove_item is not None:
-        # add the item back
-        view.scene().addItem(remove_item)
     return pixmap
+
+def captureVideo(view, filename, duration=5, fps=10):
+    pass
+    # frames = []
+    # num_frames = duration * fps
+
+    # for i in range(num_frames):
+    #     # Scale the view (example: gradually zoom in)
+    #     # scale_factor = 1 + (i / num_frames)
+    #     # view.resetTransform()
+    #     # view.scale(scale_factor, scale_factor)
+        
+    #     # Capture the current view
+    #     pixmap = captureView(view)
+    #     image = pixmap.toImage()
+    #     buffer = QtCore.QBuffer()
+    #     buffer.open(QtCore.QBuffer.ReadWrite)
+    #     image.save(buffer, 'PNG')
+    #     # create numpy from byte stream
+    #     frame = imageio.imread(buffer.data().data())
+    #     frames.append(frame)
+    
+    # # Save as MP4
+    # if filename.endswith('.mp4'):
+    #     imageio.mimsave(filename, frames, fps=fps, codec='libx264')
+    # # Save as GIF
+    # elif filename.endswith('.gif'):
+    #     imageio.mimsave(filename, frames, fps=fps)
 
 def adjustGraphicsView(self, idx=-1, media_w=None, media_h=None):
     '''Adjust QGraphicsView geometry in the main window to build media view grids.
@@ -110,17 +161,15 @@ class DynamicGridView:
         # print('view and scene created')
         self.graphicsViews[base_key] = view
 
-    def save(self):
+    def save(self, scaled=False):
         if self.currentIndex == -1:
             print('No data to save!')
             return 
         save_folder = QFileDialog.getExistingDirectory(self.main_window, "Select Folder")
-        # save_folder = '/Users/celine/Desktop/DiffBIR/head figure/BSR_crop'
-        # print('save_folder', save_folder)
         if save_folder:
             self.save_dir = save_folder
             save_folder = QDir.toNativeSeparators(save_folder)
-            self.file_handler.saveImageGroup(self.graphicsViews, self.currentIndex, save_folder)
+            self.file_handler.saveImageGroup(self.graphicsViews, self.currentIndex, save_folder, scale_view=scaled)
 
     def delete(self):
         base_key = self.file_handler.deleteFolder()
