@@ -152,6 +152,7 @@ class fileHandler:
         fpath = os.path.join(self.folderPaths[key], filename)
         print(fpath)
         if os.path.exists(fpath):
+            print('Reading from local file ', fpath)
             file_bytes = read_bytes(fpath)
         elif self.ssh_client is not None:
             # read remote media file bytes, and cache to local dirs automatically

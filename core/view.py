@@ -158,6 +158,7 @@ class DynamicGridView:
         view.setDragMode(QGraphicsView.ScrollHandDrag)
         scene = QGraphicsScene(self.main_window)
         view.setScene(scene)
+        view.resize(windowConfig.IMG_SIZE_W, windowConfig.IMG_SIZE_W)
         # print('view and scene created')
         self.graphicsViews[base_key] = view
 

@@ -2,8 +2,8 @@ import os
 import cv2
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QUrl, Qt, QSizeF, QRect, QRectF
-from PyQt5.QtWidgets import QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsProxyWidget, QLabel
+from PyQt5.QtCore import QUrl, Qt, QSizeF, QRect, QFileInfo
+from PyQt5.QtWidgets import QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsProxyWidget, QLabel, QWidget, QVBoxLayout
 from PyQt5.QtMultimediaWidgets import QGraphicsVideoItem
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent, QMediaMetaData
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
@@ -14,8 +14,8 @@ class AbstractMedia:
     def __init__(self, path, bytes=None, view=None):
         self.path = path
         self.bytes = bytes
-        self.width = None
-        self.height = None
+        self.width = windowConfig.IMG_SIZE_W
+        self.height = windowConfig.IMG_SIZE_H
         self.item = None
         self.view = view
 
@@ -63,36 +63,60 @@ def load_image_obj(path=None, bytes=None, scale=True) -> QtGui.QPixmap:
 
 class QVideoObj(AbstractMedia):
     def _load(self):
-        w = windowConfig.IMG_SIZE_W
         self.item = QGraphicsVideoItem()
-        media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        qUrl = QUrl.fromLocalFile(self.path)
-        media_player.setVideoOutput(self.item)
-        if qUrl:
-            # 设置 QGraphicsVideoItem 显示的内容
-            media_player.setMedia(QMediaContent(qUrl))
-
-            # Get geometry information of the video.
-            video_capture = cv2.VideoCapture(self.path)
-            self.set_size(
-                int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH)), int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-            video_capture.release()
-            # print(self.path, self.width, self.height)
-            # Set loop count to -1 for infinite loop
-            media_player.stateChanged.connect(lambda state: self.video_state_changed(state, media_player))
-            media_player.play()
-        else:
-            self.width, self.height = w, w
-
-        self.item.setSize(QSizeF((self.width // w) * self.height, w))
+        self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.view.scene().addItem(self.item)
+        self.media_player.setVideoOutput(self.item)
+
+        if QFileInfo(self.path).exists():
+            # 设置 QGraphicsVideoItem 显示的内容
+            self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(self.path)))
+            
+            self.media_player.stateChanged.connect(self.video_state_changed)
+            self.media_player.error.connect(self.media_error)
+            self.media_player.play()
+            
+            # 异步函数，需要等待视频加载完成. 容易bug的地方：主函数先执行，后执行视频媒体读取
+            self.item.nativeSizeChanged.connect(self.resize_view)
+            print('video media playing...')
+            print('native size in _load', self.item.nativeSize())
+
+    def resize_view(self):
+        # ensure that the view is always below any other child
+        self.view.lower()
+        # make the view as big as the parent
+        # self.view.resize(self.size())
+        size = self.item.nativeSize()
+        print(size)
+        self.set_size(size.width(), size.height())
+        print('native size', self.item.nativeSize())
+        # resize the item to the video size
+        self.item.setSize(self.item.nativeSize())
+        # fit the whole viewable area to the item and crop exceeding margins
+        self.view.fitInView(
+            self.item, Qt.KeepAspectRatioByExpanding)
+        # scroll the view to the center of the item
+        self.view.centerOn(self.item)
+        
+    def media_error(self, error):
+        print(f"Error: {self.media_player.errorString()}")
     
-    def video_state_changed(self, state, player):
-        '''Set infinite loop playback for video.'''
-        if state == QMediaPlayer.StoppedState:
+    def video_state_changed(self, state):
+        if state == QMediaPlayer.LoadedMedia:
+            video_size = self.media_player.metaData(QMediaPlayer.VideoSize)
+            if video_size:
+                width, height = video_size.width(), video_size.height()
+                self.view.setFixedSize(width, height)
+                self.set_size(width, height)
+        elif state == QMediaPlayer.StoppedState:
+            '''Set infinite loop playback for video.'''
             # Restart the video when it reaches the end
-            player.setPosition(0)
-            player.play()
+            # player.setPosition(0)
+            self.media_player.play()
+        elif state == QMediaPlayer.PlayingState:
+            print("Media is playing...")
+        elif state == QMediaPlayer.PausedState:
+            print("Media is paused...")
 
 class QGifObj(AbstractMedia):
     def _load(self):
@@ -120,8 +144,9 @@ class QImageObj(AbstractMedia):
         self.item = obj
         self.view.scene().addPixmap(self.item)
 
-class QMediaObj:
+class QMediaObj(QWidget):
     def __init__(self, path, bytes=None, fdir=None, view=None):
+        super(QMediaObj, self).__init__()
         assert os.path.exists(path) or bytes
 
         self.fdir = fdir # 1st level folder
@@ -131,6 +156,7 @@ class QMediaObj:
             self.obj = QGifObj(path, bytes, view)
         elif path.endswith(supported_types['video']):
             self.obj = QVideoObj(path, bytes, view)
+            print('QVideoObj', view)
         elif path.endswith(supported_types['image']):
             self.obj = QImageObj(path, bytes, view)
         else:

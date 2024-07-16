@@ -1,7 +1,7 @@
 import os
 import math
 from copy import deepcopy
-from PyQt5.QtWidgets import (QMainWindow, QDialog, QMessageBox, QDesktopWidget)
+from PyQt5.QtWidgets import (QMainWindow, QDialog, QMessageBox, QDesktopWidget, QWidget, QVBoxLayout)
 from PyQt5.QtCore import QPoint
 
 from ui import MainWindowUI
@@ -110,14 +110,21 @@ class ViewerApp(QMainWindow, MainWindowUI, EventHandler):
         if self.currentIndex == -1:
             print('No media loaded')
             return 
+        print('Updating...')
         # self.profiler.enable()
+        # TODO: optimize this, this is added for video(mp4) playing.
+        # QGraphicsVideoItem+QMediaPlayer cannot dispalyed in QGraphicsView without QWidget in the QMainwindow
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout(central_widget)
         for idx, (key, view) in enumerate(self.graphicsViews.items()):
             # add media obj
             fpath, file_bytes = self.file_handler.loadFileBytes(key)
             
-            # print(file_bytes, fpath, fpath_local, relative_fdir)
+            # print(fpath)
             qTitle = getQTitle(self, fpath, key)
             qMedia = QMediaObj(fpath, bytes=file_bytes, fdir='', view=view)
+            layout.addWidget(qMedia)
 
             qMedia.show_in_view(qTitle)
             if not self.view_adjusted: adjustGraphicsView(self, idx, qMedia.width, qMedia.height)
@@ -134,6 +141,7 @@ class ViewerApp(QMainWindow, MainWindowUI, EventHandler):
         self.update()
 
     def addFolder(self, folder=None, update=True, **kargs):
+        folder = '/Users/celine/Desktop/VideoLM/test_samples/pexels'
         file_num, base_key = self.file_handler.addFolder(folder, **kargs)
         print('file_num', file_num, 'base_key', base_key, file_num)
        

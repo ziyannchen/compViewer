@@ -9,7 +9,7 @@ X_NUM: 2 # 一行显示多少张图片/视频
 # Media window
 # 每个图片的大小 h=auto: 根据长宽比例自动计算
 IMG_SIZE_W: 1024
-IMG_SIZE_H: auto
+IMG_SIZE_H: 512
 
 SUPPORTED_FILES: {
   'image': ['jpg', 'jpeg', 'png', 'bmp'],
