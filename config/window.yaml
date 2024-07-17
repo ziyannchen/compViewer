@@ -6,10 +6,9 @@ MARGIN_W: 10
 BORDER: 5 # 定义每个图片窗口之间的间隔距离
 X_NUM: 2 # 一行显示多少张图片/视频
 
-# Media window
-# 每个图片的大小 h=auto: 根据长宽比例自动计算
-IMG_SIZE_W: 1024
-IMG_SIZE_H: 512
+# Media window: 定义图片/视频的大小，暂时不支持调整MEDIA_W和MEDIA_H，默认图像原始大小
+MEDIA_W: 1024
+MEDIA_H: 512
 
 SUPPORTED_FILES: {
   'image': ['jpg', 'jpeg', 'png', 'bmp'],

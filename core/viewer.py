@@ -141,7 +141,7 @@ class ViewerApp(QMainWindow, MainWindowUI, EventHandler):
         self.update()
 
     def addFolder(self, folder=None, update=True, **kargs):
-        folder = '/Users/celine/Desktop/VideoLM/test_samples/pexels'
+        # folder = '/Users/celine/Desktop/VideoLM/test_samples/pexels'
         file_num, base_key = self.file_handler.addFolder(folder, **kargs)
         print('file_num', file_num, 'base_key', base_key, file_num)
        

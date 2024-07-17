@@ -14,8 +14,8 @@ class AbstractMedia:
     def __init__(self, path, bytes=None, view=None):
         self.path = path
         self.bytes = bytes
-        self.width = windowConfig.IMG_SIZE_W
-        self.height = windowConfig.IMG_SIZE_H
+        self.width = None 
+        self.height = None
         self.item = None
         self.view = view
 
@@ -27,6 +27,9 @@ class AbstractMedia:
         self.view.scene().clear() # scene clearing after qText created, avoid qText to be cleared
         self._load()
 
+    def force_resize(self):
+        self.set_size(windowConfig.MEDIA_W, windowConfig.MEDIA_H)
+    
     def set_size(self, w, h):
         self.width, self.height = w, h
     
@@ -63,6 +66,9 @@ def load_image_obj(path=None, bytes=None, scale=True) -> QtGui.QPixmap:
 
 class QVideoObj(AbstractMedia):
     def _load(self):
+        self.size_set = False
+        self.force_resize()
+
         self.item = QGraphicsVideoItem()
         self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.view.scene().addItem(self.item)
@@ -85,38 +91,42 @@ class QVideoObj(AbstractMedia):
         # ensure that the view is always below any other child
         self.view.lower()
         # make the view as big as the parent
-        # self.view.resize(self.size())
-        size = self.item.nativeSize()
-        print(size)
-        self.set_size(size.width(), size.height())
-        print('native size', self.item.nativeSize())
+        
+        if not self.size_set:
+            size = self.item.nativeSize()
+            self.set_size(size.width(), size.height())
+            self.size_set = True
+        # self.set_size(size.width(), size.height())
+        # print('native size', self.item.nativeSize())
         # resize the item to the video size
-        self.item.setSize(self.item.nativeSize())
+        # self.item.setSize(self.item.nativeSize())
+        size = QSizeF(self.width, self.height)
+        self.view.resize(self.width, self.height)
+        self.item.setSize(size)
+        print('Video size ', self.view.size())
+
         # fit the whole viewable area to the item and crop exceeding margins
-        self.view.fitInView(
-            self.item, Qt.KeepAspectRatioByExpanding)
+        # self.view.fitInView(
+        #     self.item, Qt.KeepAspectRatioByExpanding)
+
         # scroll the view to the center of the item
-        self.view.centerOn(self.item)
+        # self.view.centerOn(self.item)
         
     def media_error(self, error):
         print(f"Error: {self.media_player.errorString()}")
     
     def video_state_changed(self, state):
-        if state == QMediaPlayer.LoadedMedia:
-            video_size = self.media_player.metaData(QMediaPlayer.VideoSize)
-            if video_size:
-                width, height = video_size.width(), video_size.height()
-                self.view.setFixedSize(width, height)
-                self.set_size(width, height)
-        elif state == QMediaPlayer.StoppedState:
+        if state == QMediaPlayer.StoppedState:
             '''Set infinite loop playback for video.'''
             # Restart the video when it reaches the end
-            # player.setPosition(0)
+            # self.media_player.setPosition(0)
             self.media_player.play()
         elif state == QMediaPlayer.PlayingState:
-            print("Media is playing...")
+            # print("Media is playing...")
+            pass
         elif state == QMediaPlayer.PausedState:
-            print("Media is paused...")
+            # print("Media is paused...")
+            pass
 
 class QGifObj(AbstractMedia):
     def _load(self):
