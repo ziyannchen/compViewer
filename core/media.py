@@ -84,8 +84,8 @@ class QVideoObj(AbstractMedia):
             
             # 异步函数，需要等待视频加载完成. 容易bug的地方：主函数先执行，后执行视频媒体读取
             self.item.nativeSizeChanged.connect(self.resize_view)
-            print('video media playing...')
-            print('native size in _load', self.item.nativeSize())
+            # print('video media playing...')
+            # print('native size in _load', self.item.nativeSize())
 
     def resize_view(self):
         # ensure that the view is always below any other child
@@ -96,14 +96,11 @@ class QVideoObj(AbstractMedia):
             size = self.item.nativeSize()
             self.set_size(size.width(), size.height())
             self.size_set = True
-        # self.set_size(size.width(), size.height())
-        # print('native size', self.item.nativeSize())
+
         # resize the item to the video size
-        # self.item.setSize(self.item.nativeSize())
         size = QSizeF(self.width, self.height)
         self.view.resize(self.width, self.height)
         self.item.setSize(size)
-        print('Video size ', self.view.size())
 
         # fit the whole viewable area to the item and crop exceeding margins
         # self.view.fitInView(

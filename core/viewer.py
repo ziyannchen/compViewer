@@ -149,6 +149,7 @@ class ViewerApp(QMainWindow, MainWindowUI, EventHandler):
             self.view.add(base_key)
             self.currentIndex = 0  # return to page 0 everytime new folder loaded
             if update:
+                self.view_adjusted = False
                 self.update()
         else:
             if file_num < 0:

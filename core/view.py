@@ -139,7 +139,7 @@ def adjustGraphicsView(self, idx=-1, media_w=None, media_h=None):
     y = y_margin + y_crt * (vsize_h + border)
     list(self.graphicsViews.values())[idx].setGeometry(x, y, vsize_w, vsize_h)
 
-    # print('view pos', x, y, vsize_w, vsize_h)
+    print('view pos', x, y, vsize_w, vsize_h)
 
 class DynamicGridView:
     def __init__(self, main_widget, file_handler):
@@ -157,7 +157,7 @@ class DynamicGridView:
         view.setDragMode(QGraphicsView.ScrollHandDrag)
         scene = QGraphicsScene(self.main_window)
         view.setScene(scene)
-        view.resize(windowConfig.MEDIA_W, windowConfig.MEDIA_H)
+        # view.resize(windowConfig.MEDIA_W, windowConfig.MEDIA_H)
         # print(view.size())
         # print('view and scene created')
         self.graphicsViews[base_key] = view
